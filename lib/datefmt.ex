@@ -46,12 +46,12 @@ defmodule DateFmt do
   defp do_validate("{" <> rest, pos, parts, acc) do
     case get_flag(rest, [], pos) do
       { :ok, flag, rest } ->
-        case validate_flag(flag, pos+1) do
+        case validate_flag(flag) do
           :ok ->
             new_parts = [parts, {:bin, String.from_char_list!(acc)}, {:flag, flag}]
             do_validate(rest, pos + size(flag), new_parts, [])
-          error ->
-            error
+          :error ->
+            { :error, "bad flag at #{pos+1}" }
         end
       error -> error
     end
@@ -77,7 +77,17 @@ defmodule DateFmt do
     get_flag(rest, [acc, c], pos)
   end
 
-  defp validate_flag(flag, _pos) do
+  defp validate_flag("0" <> flag) do
+    do_validate_flag(flag)
+  end
+
+  defp validate_flag("_" <> flag) do
+    do_validate_flag(flag)
+  end
+
+  defp do_validate_flag(flag) when flag in ["Y", "y", "m", "h", "s"] do
     :ok
   end
+
+  defp do_validate_flag(flag), do: :error
 end
