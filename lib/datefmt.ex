@@ -1,3 +1,9 @@
+# Don't worry, we will support a few flavours of formatting language.
+# * strftime
+# * Go's style
+# * my own format
+# * user-defined format languages
+
 defmodule DateFmt do
   def format(date, fmt) do
     case do_validate(fmt) do
