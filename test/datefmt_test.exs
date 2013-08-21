@@ -192,19 +192,23 @@ defmodule DateFmtTest do
     assert {:error, "missing } (starting at 4)"} = DateFmt.validate "abc { def"
     assert {:error, "extraneous } at 4"} = DateFmt.validate "abc } def"
   end
+end
 
-  test :do_validate_bins do
-    assert {:ok,[""]} = DateFmt.do_validate ""
-    assert {:ok,["abc"]} = DateFmt.do_validate "abc"
-    assert {:ok,["Use {{ as oft{{en as you like{{"]} = DateFmt.do_validate "Use {{ as oft{{en as you like{{"
-    assert {:ok,["Same go}}es for }}"]} = DateFmt.do_validate "Same go}}es for }}"
-    assert {:ok,["{{abc}}"]} = DateFmt.do_validate "{{abc}}"
+defmodule DateFmt.DefaultTest do
+  use ExUnit.Case, async: true
+
+  test :tokenize_bins do
+    assert {:ok,[""]} = DateFmt.Default.tokenize ""
+    assert {:ok,["abc"]} = DateFmt.Default.tokenize "abc"
+    assert {:ok,["Use {{ as oft{{en as you like{{"]} = DateFmt.Default.tokenize "Use {{ as oft{{en as you like{{"
+    assert {:ok,["Same go}}es for }}"]} = DateFmt.Default.tokenize "Same go}}es for }}"
+    assert {:ok,["{{abc}}"]} = DateFmt.Default.tokenize "{{abc}}"
   end
 
   #test :do_validate_year do
-    #assert {:ok,["", {:YYYY,nil}, ""]} = DateFmt.do_validate "{YYYY}"
-    #assert {:ok,["", {:YYYY,"0"}, ""]} = DateFmt.do_validate "{0YYYY}"
-    #assert {:ok,["", {:YYYY," "}, ""]} = DateFmt.do_validate "{_YYYY}"
-    #assert {:error, "bad flag at 1"} = DateFmt.do_validate "{-YYYY}"
+    #assert {:ok,["", {:YYYY,nil}, ""]} = DateFmt.Default.tokenize "{YYYY}"
+    #assert {:ok,["", {:YYYY,"0"}, ""]} = DateFmt.Default.tokenize "{0YYYY}"
+    #assert {:ok,["", {:YYYY," "}, ""]} = DateFmt.Default.tokenize "{_YYYY}"
+    #assert {:error, "bad flag at 1"} = DateFmt.Default.tokenize "{-YYYY}"
   #end
 end
