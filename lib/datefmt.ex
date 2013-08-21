@@ -5,7 +5,7 @@
 # * user-defined format languages
 
 defmodule DateFmt.Default do
-  def tokenize(fmt) do
+  def tokenize(fmt) when is_binary(fmt) do
     tokenize(fmt, 0, [], [])
   end
 
@@ -24,7 +24,7 @@ defmodule DateFmt.Default do
   defp tokenize("{" <> rest, pos, parts, acc) do
     case get_flag(rest, []) do
       { flag, rest } ->
-        case validate_flag(flag) do
+        case parse_flag(flag) do
           {_,_}=new_flag ->
             new_parts = [parts, String.from_char_list!(acc), new_flag]
             tokenize(rest, pos + size(flag), new_parts, [])
@@ -39,7 +39,7 @@ defmodule DateFmt.Default do
     { :error, "extraneous } at #{pos}" }
   end
 
-  defp tokenize(<<c :: utf8, rest :: binary>>, pos, parts, acc) do
+  defp tokenize(<<c :: utf8>> <> rest, pos, parts, acc) do
     tokenize(rest, pos+1, parts, [acc, c])
   end
 
@@ -51,23 +51,23 @@ defmodule DateFmt.Default do
     :error
   end
 
-  defp get_flag(<<c :: utf8, rest :: binary>>, acc) do
+  defp get_flag(<<c :: utf8>> <> rest, acc) do
     get_flag(rest, [acc, c])
   end
 
-  defp validate_flag("0" <> flag) do
-    do_validate_flag(flag, "0")
+  defp parse_flag("0" <> flag) do
+    do_parse_flag(flag, "0")
   end
 
-  defp validate_flag("_" <> flag) do
-    do_validate_flag(flag, " ")
+  defp parse_flag("_" <> flag) do
+    do_parse_flag(flag, " ")
   end
 
-  defp validate_flag(flag) do
-    do_validate_flag(flag, nil)
+  defp parse_flag(flag) do
+    do_parse_flag(flag, nil)
   end
 
-  defp do_validate_flag(flag, nil)
+  defp do_parse_flag(flag, nil)
         when flag in ["Mshort", "Mfull",
                       "WDshort", "WDfull",
                       "am", "AM",
@@ -75,7 +75,7 @@ defmodule DateFmt.Default do
     do_convert_flag(flag)
   end
 
-  defp do_validate_flag(flag, modifier)
+  defp do_parse_flag(flag, modifier)
         when flag in ["YYYY", "YY", "M", "D", "Dord",
                       "WYYYY", "WYY", "Wiso", "Wsun", "Wmon",
                       "WDmon", "WDsun",
@@ -83,7 +83,7 @@ defmodule DateFmt.Default do
     do_convert_flag(flag, modifier)
   end
 
-  defp do_validate_flag(_, _), do: :error
+  defp do_parse_flag(_, _), do: :error
 
   def do_convert_flag(flag) do
     tag = case flag do
@@ -119,6 +119,98 @@ defmodule DateFmt.Default do
       "s"     -> { :second,    2 }
     end
     { tag, mod && "~#{width}..#{mod}B" || "~B" }
+  end
+end
+
+defmodule DateFmt.Strftime do
+  defrecordp :directive, dir: nil, flag: ?0, width: 0
+
+  def tokenize(fmt) when is_binary(fmt) do
+    tokenize(fmt, 0, [], [])
+  end
+
+  defp tokenize("", _, parts, acc) do
+    { :ok, List.flatten([parts, String.from_char_list!(acc)]) }
+  end
+
+  defp tokenize("%%" <> rest, pos, parts, acc) do
+    tokenize(rest, pos+2, parts, [acc, "%"])
+  end
+
+  defp tokenize("%" <> rest, pos, parts, acc) do
+    case get_directive(rest) do
+      { dir, rest } ->
+        case parse_directive(dir) do
+          {_,_}=spec ->
+            new_parts = [parts, String.from_char_list!(acc), spec]
+            tokenize(rest, pos + size(dir), new_parts, [])
+          :error ->
+            { :error, "bad directive at #{pos+1}" }
+        end
+      :error -> { :error, "missing } (starting at #{pos})" }
+    end
+  end
+
+  defp tokenize(<<c :: utf8>> <> rest, pos, parts, acc) do
+    tokenize(rest, pos+1, parts, [acc, c])
+  end
+
+  defp get_directive(text) do
+    get_directive_flag(text, directive())
+  end
+
+  defp get_directive_flag(<<flag :: utf8, rest :: binary>>=str, dir) do
+    if flag in [?-, ?_, ?0, ?^, ?#, ?:] do
+      dir = directive(dir, flag: flag)
+    else
+      rest = str
+    end
+    get_directive_width(rest, dir)
+  end
+
+  defp get_directive_width(<<digit :: utf8, rest :: binary>>=str, directive(width: width)=dir) do
+    if digit in ?0..?9 do
+      dir = directive(dir, width: width * 10 + digit - ?0)
+      get_directive_width(rest, dir)
+    else
+      get_directive_mod(str, dir)
+    end
+  end
+
+  defp get_directive_mod(<<mod :: utf8>> <> rest, dir)
+        when mod in [?E, ?O] do
+    # ignore those modifiers
+    get_directive_final(rest, dir)
+  end
+
+  defp get_directive_mod(other, dir) do
+    get_directive_final(other, dir)
+  end
+
+  defp get_directive_final(<<char :: utf8>> <> rest, dir) do
+    { directive(dir, dir: char), rest }
+  end
+
+  defp parse_directive(directive(flag: flag, width: width, dir: dir)) do
+    { tag, w } = case dir do
+      ?Y -> { :year,  4 }
+      ?y -> { :year2, 2 }
+      ?m -> { :month, 2 }
+      ?d -> { :day,   2 }
+      ?e -> { :day,   2 }
+      ?j -> { :oday,  3 }
+    end
+
+    width = max(w, width)
+
+    pad = case flag do
+      ?- -> nil
+      ?_ -> " "
+      other  -> <<other :: utf8>>
+    end
+
+
+    { tag, pad && "~#{width}..#{pad}B" || "~B" }
   end
 end
 
@@ -240,7 +332,7 @@ defmodule DateFmt do
   ### Generic formatting ###
    #                      #
 
-  def format(date, fmt) when is_binary(fmt) do
+  def format(date, fmt) do
     case tokenize(fmt) do
       { :ok, parts } ->
         {{year,month,day}, {hour,min,sec}} = Date.local(date)
@@ -325,6 +417,10 @@ defmodule DateFmt do
   defp tokenize({:default, fmt}) when is_binary(fmt) do
     # Use the default formatter
     DateFmt.Default.tokenize(fmt)
+  end
+
+  defp tokenize({:strftime, fmt}) when is_binary(fmt) do
+    DateFmt.Strftime.tokenize(fmt)
   end
 
   defp tokenize({formatter, fmt}) when is_function(formatter) and is_binary(fmt) do
