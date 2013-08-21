@@ -5,7 +5,79 @@
 # * user-defined format languages
 
 defmodule DateFmt do
-  def format(date, fmt) do
+
+  defp wrap(formatted) do
+    { :ok, iolist_to_binary(formatted) }
+  end
+
+  defp format_iso({{year,month,day}, {hour,min,sec}}, tz) do
+    :io_lib.format(
+        "~4.10.0B-~2.10.0B-~2.10.0BT~2.10.0B:~2.10.0B:~2.10.0B~s",
+        [year, month, day, hour, min, sec, tz]
+    ) |> wrap
+  end
+
+  # Shortcut and efficient implementations for common formats
+  def format(date, :iso) do
+    format_iso(Date.universal(date), "Z")
+  end
+
+  def format(date, :iso_local) do
+   format_iso(Date.local(date), "")
+  end
+
+  def format(date, :iso_full) do
+    # Need to use local time to comply with ISO
+    local = Date.local(date)
+
+    { _, _, {offset,_} } = Date.Conversions.to_gregorian(date)
+
+    abs_offs = abs(offset)
+    hour_offs = trunc(abs_offs)
+    min_offs = round((abs_offs - hour_offs) * 60)
+
+    fstr = (offset < 0 && "-" || "+") <> "~2..0B~2..0B"
+    tz = :io_lib.format(fstr, [hour_offs, min_offs])
+
+    format_iso(local, tz)
+  end
+
+  def format(date, :iso_date) do
+    {{year,month,day}, _} = Date.universal(date)
+    :io_lib.format("~4.10.0B-~2.10.0B-~2.10.0B", [year, month, day])
+    |> wrap
+  end
+
+  def format(date, :iso_time) do
+    {_, {hour,min,sec}} = Date.universal(date)
+    :io_lib.format("~2..0B:~2..0B:~2..0B", [hour, min, sec])
+    |> wrap
+  end
+
+  def format(date, :iso_week) do
+    {year, week} = Date.weeknum(date)
+    :io_lib.format("~4..0B-W~2..0B", [year, week])
+    |> wrap
+  end
+
+  def format(date, :iso_week_day) do
+    {year, week, day} = Date.iso_triplet(date)
+    :io_lib.format("~4..0B-W~2..0B-~B", [year, week, day])
+    |> wrap
+  end
+
+  def format(date, :iso_ordinal) do
+    {{year,_,_},_} = Date.universal(date)
+
+    start_of_year = Date.set(date, [month: 1, day: 1])
+    day_no = 1 + Date.diff(start_of_year, date, :day)
+
+    :io_lib.format("~4..0B-~3..0B", [year, day_no])
+    |> wrap
+  end
+
+  # Generic formatting
+  def format(date, fmt) when is_binary(fmt) do
     case do_validate(fmt) do
       { :ok, parts } ->
         {{year,month,day}, {hour,min,sec}} = Date.local(date)
