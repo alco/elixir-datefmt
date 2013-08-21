@@ -27,6 +27,8 @@ defmodule DateFmt do
               :month     -> month
               :day       -> day
               :oday      -> day_no
+              :wday      -> Date.weekday(date)
+              :wday0     -> rem(Date.weekday(date), 7)
               :iso_year  -> iso_year
               :iso_year2 -> rem(iso_year, 100)
               :iso_week  -> iso_week
@@ -154,6 +156,7 @@ defmodule DateFmt do
   defp do_validate_flag(flag, modifier)
         when flag in ["YYYY", "YY", "M", "D", "Dord",
                       "WYYYY", "WYY", "Wiso", "Wsun", "Wmon",
+                      "WDmon", "WDsun",
                       "h24", "h12", "m", "s"] do
     do_convert_flag(flag, modifier)
   end
@@ -181,6 +184,8 @@ defmodule DateFmt do
       "M"     -> { :month,     2 }
       "D"     -> { :day,       2 }
       "Dord"  -> { :oday,      3 }
+      "WDmon" -> { :wday,      1 }
+      "WDsun" -> { :wday0,     1 }
       "WYYYY" -> { :iso_year,  4 }
       "WYY"   -> { :iso_year2, 2 }
       "Wiso"  -> { :iso_week,  2 }

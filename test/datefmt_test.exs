@@ -27,6 +27,14 @@ defmodule DateFmtTest do
 
     date = Date.from({3,1,1})
     assert { :ok, "001" } = DateFmt.format(date, "{0Dord}")
+
+    date = Date.from({2007,11,19})
+    assert { :ok, "2007323" } = DateFmt.format(date, "{YYYY}{Dord}")
+    assert { :ok, "2007-323" } = DateFmt.format(date, "{YYYY}-{Dord}")
+
+    date = Date.from({2007,11,18})
+    assert { :ok, "0" } = DateFmt.format(date, "{WDsun}")
+    assert { :ok, "7" } = DateFmt.format(date, "{WDmon}")
   end
 
   test :format_names do
@@ -58,6 +66,12 @@ defmodule DateFmtTest do
     date = Date.from({2012,1,2})
     assert { :ok, "1" } = DateFmt.format(date, "{Wmon}")
     assert { :ok, "1" } = DateFmt.format(date, "{Wsun}")
+  end
+
+  test :format_iso_week do
+    date = Date.from({2007,11,19})
+    assert { :ok, "2007W471" } = DateFmt.format(date, "{WYYYY}W{Wiso}{WDmon}")
+    assert { :ok, "2007-W47-1" } = DateFmt.format(date, "{WYYYY}-W{Wiso}-{WDmon}")
   end
 
   test :format_zones do
@@ -97,8 +111,37 @@ defmodule DateFmtTest do
     assert { :ok, "AM 00" } = DateFmt.format(date_midnight, "{AM} {0h24}")
   end
 
+  # References:
+  # http://www.ruby-doc.org/core-2.0/Time.html#method-i-strftime
+  # http://golang.org/pkg/time/#pkg-constants
   test :format_full do
-    assert nil
+    date = Date.from({{2007,11,9}, {8,37,48}})
+
+    #assert { :ok, "083748-0600" } = DateFmt.format(date, "")
+    #assert { :ok, "08:37:48-06:00" } = DateFmt.format(date, "")
+    #assert { :ok, "20071119T083748-0600" } = DateFmt.format(date, "")
+    #assert { :ok, "2007-11-19T08:37:48-06:00" } = DateFmt.format(date, "")
+    #assert { :ok, "2007323T083748-0600" } = DateFmt.format(date, "")
+    #assert { :ok, "2007-323T08:37:48-06:00" } = DateFmt.format(date, "")
+    #assert { :ok, "2007W471T083748-0600" } = DateFmt.format(date, "")
+    #assert { :ok, "2007-W47-1T08:37:48-06:00" } = DateFmt.format(date, "")
+
+    # ISO
+    assert { :ok, "20071109T0837" } = DateFmt.format(date, "{YYYY}{M}{0D}T{0h24}{m}")
+    assert { :ok, "2007-11-09T08:37" } = DateFmt.format(date, "{YYYY}-{M}-{0D}T{0h24}:{m}")
+
+    #assert { :ok, "2007323T0837Z" } = DateFmt.format(date, "")
+    #assert { :ok, "2007-323T08:37Z" } = DateFmt.format(date, "")
+    #assert { :ok, "2007W471T0837-0600" } = DateFmt.format(date, "")
+    #assert { :ok, "2007-W47-1T08:37-06:00" } = DateFmt.format(date, "")
+
+
+    assert { :ok, "Fri Nov  9 08:37:48 2007" } = DateFmt.format(date, "{WDshort} {Mshort} {_D} {0h24}:{0m}:{0s} {YYYY}")
+    #assert { :ok, "Mon Nov 19 08:37:48 MST 2007" } = DateFmt.format(date, "{WDshort} {Mshort} {_D} {0h24}:{0m}:{0s} {YYYY}")
+    #assert { :ok, "Mon Nov 19 08:37:48 -0700 2007" } = DateFmt.format(date, "{WDshort} {Mshort} {_D} {0h24}:{0m}:{0s} {YYYY}")
+    assert { :ok, "09 Nov 07 08:37" } = DateFmt.format(date, "{0D} {Mshort} {0YY} {0h24}:{0m}")
+
+    assert { :ok, "8:37AM" } = DateFmt.format(date, "{h12}:{0m}{AM}")
   end
 
   test :validate do
