@@ -4,254 +4,15 @@
 # * my own format
 # * user-defined format languages
 
-defmodule DateFmt.Default do
-  def tokenize(fmt) when is_binary(fmt) do
-    tokenize(fmt, 0, [], [])
-  end
-
-  defp tokenize("", _, parts, acc) do
-    { :ok, List.flatten([parts, String.from_char_list!(acc)]) }
-  end
-
-  defp tokenize("{{" <> rest, pos, parts, acc) do
-    tokenize(rest, pos+2, parts, [acc, "{{"])
-  end
-
-  defp tokenize("}}" <> rest, pos, parts, acc) do
-    tokenize(rest, pos+2, parts, [acc, "}}"])
-  end
-
-  defp tokenize("{" <> rest, pos, parts, acc) do
-    case get_flag(rest, []) do
-      { flag, rest } ->
-        case parse_flag(flag) do
-          {_,_}=new_flag ->
-            new_parts = [parts, String.from_char_list!(acc), new_flag]
-            tokenize(rest, pos + size(flag), new_parts, [])
-          :error ->
-            { :error, "bad flag at #{pos+1}" }
-        end
-      :error -> { :error, "missing } (starting at #{pos})" }
-    end
-  end
-
-  defp tokenize("}" <> _, pos, _, _) do
-    { :error, "extraneous } at #{pos}" }
-  end
-
-  defp tokenize(<<c :: utf8>> <> rest, pos, parts, acc) do
-    tokenize(rest, pos+1, parts, [acc, c])
-  end
-
-  defp get_flag("}" <> rest, acc) do
-    { iolist_to_binary(acc), rest }
-  end
-
-  defp get_flag("", _) do
-    :error
-  end
-
-  defp get_flag(<<c :: utf8>> <> rest, acc) do
-    get_flag(rest, [acc, c])
-  end
-
-  defp parse_flag("0" <> flag) do
-    do_parse_flag(flag, "0")
-  end
-
-  defp parse_flag("_" <> flag) do
-    do_parse_flag(flag, " ")
-  end
-
-  defp parse_flag(flag) do
-    do_parse_flag(flag, nil)
-  end
-
-  defp do_parse_flag(flag, nil)
-        when flag in ["Mshort", "Mfull",
-                      "WDshort", "WDfull",
-                      "am", "AM",
-                      "ZZZZ", "ZZ:ZZ"] do
-    do_convert_flag(flag)
-  end
-
-  defp do_parse_flag(flag, modifier)
-        when flag in ["YYYY", "YY", "M", "D", "Dord",
-                      "WYYYY", "WYY", "Wiso", "Wsun", "Wmon",
-                      "WDmon", "WDsun",
-                      "h24", "h12", "m", "s"] do
-    do_convert_flag(flag, modifier)
-  end
-
-  defp do_parse_flag(_, _), do: :error
-
-  def do_convert_flag(flag) do
-    tag = case flag do
-      "Mshort"  -> :mshort
-      "Mfull"   -> :mfull
-      "WDshort" -> :wdshort
-      "WDfull"  -> :wdfull
-      "am"      -> :am
-      "AM"      -> :AM
-      "ZZZZ"    -> nil
-      "ZZ:ZZ"   -> nil
-    end
-    { tag, "~s" }
-  end
-
-  def do_convert_flag(flag, mod) do
-    { tag, width } = case flag do
-      "YYYY"  -> { :year,      4 }
-      "YY"    -> { :year2,     2 }
-      "M"     -> { :month,     2 }
-      "D"     -> { :day,       2 }
-      "Dord"  -> { :oday,      3 }
-      "WDmon" -> { :wday,      1 }
-      "WDsun" -> { :wday0,     1 }
-      "WYYYY" -> { :iso_year,  4 }
-      "WYY"   -> { :iso_year2, 2 }
-      "Wiso"  -> { :iso_week,  2 }
-      "Wsun"  -> { :week_sun,  2 }
-      "Wmon"  -> { :week_mon,  2 }
-      "h24"   -> { :hour24,    2 }
-      "h12"   -> { :hour12,    2 }
-      "m"     -> { :minute,    2 }
-      "s"     -> { :second,    2 }
-    end
-    { tag, mod && "~#{width}..#{mod}B" || "~B" }
-  end
-end
-
-defmodule DateFmt.Strftime do
-  defrecordp :directive, dir: nil, flag: ?0, width: 0
-
-  def tokenize(fmt) when is_binary(fmt) do
-    tokenize(fmt, 0, [], [])
-  end
-
-  defp tokenize("", _, parts, acc) do
-    { :ok, List.flatten([parts, String.from_char_list!(acc)]) }
-  end
-
-  defp tokenize("%%" <> rest, pos, parts, acc) do
-    tokenize(rest, pos+2, parts, [acc, "%"])
-  end
-
-  defp tokenize("%" <> rest, pos, parts, acc) do
-    case get_directive(rest) do
-      { dir, rest } ->
-        case parse_directive(dir) do
-          {_,_}=spec ->
-            new_parts = [parts, String.from_char_list!(acc), spec]
-            tokenize(rest, pos + size(dir), new_parts, [])
-          :error ->
-            { :error, "bad directive at #{pos+1}" }
-        end
-      :error -> { :error, "missing } (starting at #{pos})" }
-    end
-  end
-
-  defp tokenize(<<c :: utf8>> <> rest, pos, parts, acc) do
-    tokenize(rest, pos+1, parts, [acc, c])
-  end
-
-  defp get_directive(text) do
-    get_directive_flag(text, directive())
-  end
-
-  defp get_directive_flag(<<flag :: utf8, rest :: binary>>=str, dir) do
-    if flag in [?-, ?_, ?0, ?^, ?#, ?:] do
-      dir = directive(dir, flag: flag)
-    else
-      rest = str
-    end
-    get_directive_width(rest, dir)
-  end
-
-  defp get_directive_width(<<digit :: utf8, rest :: binary>>=str, directive(width: width)=dir) do
-    if digit in ?0..?9 do
-      dir = directive(dir, width: width * 10 + digit - ?0)
-      get_directive_width(rest, dir)
-    else
-      get_directive_mod(str, dir)
-    end
-  end
-
-  defp get_directive_mod(<<mod :: utf8>> <> rest, dir)
-        when mod in [?E, ?O] do
-    # ignore those modifiers
-    get_directive_final(rest, dir)
-  end
-
-  defp get_directive_mod(other, dir) do
-    get_directive_final(other, dir)
-  end
-
-  defp get_directive_final(<<char :: utf8>> <> rest, dir) do
-    { directive(dir, dir: char), rest }
-  end
-
-  defp parse_directive(directive(flag: flag, width: width, dir: dir)) do
-    { tag, w } = case dir do
-      ?Y -> { :year,  4 }
-      ?y -> { :year2, 2 }
-      ?m -> { :month, 2 }
-      ?d -> { :day,   2 }
-      ?e -> { :day,   2 }
-      ?j -> { :oday,  3 }
-    end
-
-    width = max(w, width)
-
-    pad = case flag do
-      ?- -> nil
-      ?_ -> " "
-      other  -> <<other :: utf8>>
-    end
-
-
-    { tag, pad && "~#{width}..#{pad}B" || "~B" }
-  end
-end
-
 defmodule DateFmt do
-
-  defp wrap(formatted) do
-    { :ok, iolist_to_binary(formatted) }
-  end
-
-  defp format_iso({{year,month,day}, {hour,min,sec}}, tz) do
-    :io_lib.format(
-        "~4.10.0B-~2.10.0B-~2.10.0BT~2.10.0B:~2.10.0B:~2.10.0B~s",
-        [year, month, day, hour, min, sec, tz]
-    ) |> wrap
-  end
-
-  defp format_rfc(date, tz) do
-    { {year,month,day}, {hour,min,sec} } = date
-    day_name = Date.weekday_name(Date.weekday(date), :short)
-    month_name = Date.month_name(month, :short)
-    fstr = case tz do
-      { :name, tz_name } ->
-        if tz_name == "UTC" do
-          tz_name = "GMT"
-        end
-        "~s, ~2..0B ~s ~4..0B ~2..0B:~2..0B:~2..0B #{tz_name}"
-      { :offset, tz_offset } ->
-        sign = if tz_offset >= 0 do "+" else "-" end
-        tz_offset = abs(tz_offset)
-        tz_hrs = trunc(tz_offset)
-        tz_min = trunc((tz_offset - tz_hrs) * 60)
-        tz_spec = :io_lib.format("~s~2..0B~2..0B", [sign, tz_hrs, tz_min])
-        "~s, ~2..0B ~s ~4..0B ~2..0B:~2..0B:~2..0B #{tz_spec}"
-    end
-    :io_lib.format(fstr, [day_name, day, month_name, year, hour, min, sec])
-    |> wrap
-  end
-
    #                                                             #
   ### Shortcut and efficient implementations for common formats ###
    #                                                             #
+
+  @spec format(Date.dtz,
+    :iso | :iso_local | :iso_full | :iso_date | :iso_time | :iso_week |
+    :iso_week_day | :iso_ordinal | :rfc1123 | :rfc1123z  )
+  :: {:ok, String.t} | {:error, String.t}
 
   ## ISO 8601 ##
 
@@ -332,6 +93,8 @@ defmodule DateFmt do
   ### Generic formatting ###
    #                      #
 
+  @spec format(Date.dtz, String.t) :: {:ok, String.t} | {:error, String.t}
+
   def format(date, fmt) do
     case tokenize(fmt) do
       { :ok, parts } ->
@@ -391,6 +154,10 @@ defmodule DateFmt do
     end
   end
 
+  @doc """
+  A raising version of `format/2`. Returns a string with formatted date or
+  raises an `ArgumentError`.
+  """
   def format!(date, fmt) do
     case format(date, fmt) do
       { :ok, result } -> result
@@ -398,10 +165,59 @@ defmodule DateFmt do
     end
   end
 
-  def parse(date, fmt) do
-    IO.puts "#{date} #{fmt}"
+  ####
+
+  defp format_iso({{year,month,day}, {hour,min,sec}}, tz) do
+    :io_lib.format(
+        "~4.10.0B-~2.10.0B-~2.10.0BT~2.10.0B:~2.10.0B:~2.10.0B~s",
+        [year, month, day, hour, min, sec, tz]
+    ) |> wrap
   end
 
+  defp format_rfc(date, tz) do
+    { {year,month,day}, {hour,min,sec} } = date
+    day_name = Date.weekday_name(Date.weekday(date), :short)
+    month_name = Date.month_name(month, :short)
+    fstr = case tz do
+      { :name, tz_name } ->
+        if tz_name == "UTC" do
+          tz_name = "GMT"
+        end
+        "~s, ~2..0B ~s ~4..0B ~2..0B:~2..0B:~2..0B #{tz_name}"
+      { :offset, tz_offset } ->
+        sign = if tz_offset >= 0 do "+" else "-" end
+        tz_offset = abs(tz_offset)
+        tz_hrs = trunc(tz_offset)
+        tz_min = trunc((tz_offset - tz_hrs) * 60)
+        tz_spec = :io_lib.format("~s~2..0B~2..0B", [sign, tz_hrs, tz_min])
+        "~s, ~2..0B ~s ~4..0B ~2..0B:~2..0B:~2..0B #{tz_spec}"
+    end
+    :io_lib.format(fstr, [day_name, day, month_name, year, hour, min, sec])
+    |> wrap
+  end
+
+  defp wrap(formatted) do
+    { :ok, iolist_to_binary(formatted) }
+  end
+
+  ######################################################
+
+  @doc """
+  Parses the date encoded in `string` according to the given format.
+  """
+  def parse(string, fmt) do
+    IO.puts "#{string} #{fmt}"
+  end
+
+  ######################################################
+
+  @doc """
+  Verfiy the validity of format string. The argument is either a string or
+  formatter tuple.
+
+  Returns `:ok` if the format string is clean, `{ :error, <reason> }`
+  otherwise.
+  """
   def validate(fmt) do
     case tokenize(fmt) do
       { :ok, _ } -> :ok
@@ -409,13 +225,9 @@ defmodule DateFmt do
     end
   end
 
-  defp tokenize(fmt) when is_binary(fmt) do
-    # Use the default formatter
-    DateFmt.Default.tokenize(fmt)
-  end
+  ######################################################
 
   defp tokenize({:default, fmt}) when is_binary(fmt) do
-    # Use the default formatter
     DateFmt.Default.tokenize(fmt)
   end
 
@@ -425,5 +237,9 @@ defmodule DateFmt do
 
   defp tokenize({formatter, fmt}) when is_function(formatter) and is_binary(fmt) do
     formatter.(fmt)
+  end
+
+  defp tokenize(fmt) when is_binary(fmt) do
+    tokenize({:default, fmt})
   end
 end
