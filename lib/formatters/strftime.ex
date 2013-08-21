@@ -1,5 +1,5 @@
 defmodule DateFmt.Strftime do
-  defrecordp :directive, dir: nil, flag: ?0, width: 0
+  defrecordp :directive, dir: nil, flag: nil, width: 0
 
   def tokenize(fmt) when is_binary(fmt) do
     tokenize(fmt, 0, [], [])
@@ -68,24 +68,52 @@ defmodule DateFmt.Strftime do
   end
 
   defp parse_directive(directive(flag: flag, width: width, dir: dir)) do
-    { tag, w } = case dir do
+    val = case dir do
       ?Y -> { :year,  4 }
       ?y -> { :year2, 2 }
       ?m -> { :month, 2 }
+      ?B -> :mfull
+      ?b -> :mshort
       ?d -> { :day,   2 }
       ?e -> { :day,   2 }
       ?j -> { :oday,  3 }
+      ?H -> { :hour24,  2 }
+      ?k -> { :hour24,  2 }
+      ?I -> { :hour12,  2 }
+      ?l -> { :hour12,  2 }
+      ?P -> :am
+      ?p -> :AM
+      ?M -> { :minute, 2 }
+      ?S -> { :second, 2 }
+      ?A -> :wdfull
+      ?a -> :wdshort
+      ?u -> { :wday, 1 }
+      ?w -> { :wday0, 1 }
+      ?G -> { :iso_year, 4 }
+      ?g -> { :iso_year2, 2 }
+      ?V -> { :iso_week, 2 }
+      ?U -> { :week_sun, 2 }
+      ?W -> { :week_mon, 2 }
     end
 
-    width = max(w, width)
+    case val do
+      { tag, w } ->
+        width = max(w, width)
 
-    pad = case flag do
-      ?- -> nil
-      ?_ -> " "
-      other  -> <<other :: utf8>>
+        pad = if !flag and dir in [?k, ?l] do
+          " "
+        else
+          case flag do
+            ?-    -> nil
+            ?_    -> " "
+            nil   -> "0"
+            other -> <<other :: utf8>>
+          end
+        end
+
+        { tag, pad && "~#{width}..#{pad}B" || "~B" }
+
+      tag -> { tag, "~s" }
     end
-
-
-    { tag, pad && "~#{width}..#{pad}B" || "~B" }
   end
 end

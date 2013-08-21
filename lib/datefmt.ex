@@ -10,8 +10,16 @@ defmodule DateFmt do
    #                                                             #
 
   @spec format(Date.dtz,
-    :iso | :iso_local | :iso_full | :iso_date | :iso_time | :iso_week |
-    :iso_week_day | :iso_ordinal | :rfc1123 | :rfc1123z  )
+      :iso
+    | :iso_local
+    | :iso_full
+    | :iso_date
+    | :iso_time
+    | :iso_week
+    | :iso_week_day
+    | :iso_ordinal
+    | :rfc1123
+    | :rfc1123z)
   :: {:ok, String.t} | {:error, String.t}
 
   ## ISO 8601 ##
@@ -42,7 +50,7 @@ defmodule DateFmt do
 
   def format(date, :iso_date) do
     {{year,month,day}, _} = Date.universal(date)
-    :io_lib.format("~4.10.0B-~2.10.0B-~2.10.0B", [year, month, day])
+    :io_lib.format("~4..0B-~2..0B-~2..0B", [year, month, day])
     |> wrap
   end
 
@@ -169,7 +177,7 @@ defmodule DateFmt do
 
   defp format_iso({{year,month,day}, {hour,min,sec}}, tz) do
     :io_lib.format(
-        "~4.10.0B-~2.10.0B-~2.10.0BT~2.10.0B:~2.10.0B:~2.10.0B~s",
+        "~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0B~s",
         [year, month, day, hour, min, sec, tz]
     ) |> wrap
   end
