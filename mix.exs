@@ -2,7 +2,7 @@ defmodule DateFmt.Mixfile do
   use Mix.Project
 
   def project do
-    [ app: :datefmt,
+    [ app: :"elixir-datefmt",
       version: "0.0.1",
       elixir: "~> 0.10.2-dev",
       deps: deps ]
