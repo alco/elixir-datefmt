@@ -2,8 +2,8 @@ defmodule DateFmtTest do
   use ExUnit.Case
 
   test :format_year do
-    date = Date.from({{2013,8,18}, {16,28,27}}, :utc)
-    old_date = Date.from({{3,8,18}, {16,28,27}}, :utc)
+    date = Date.from({2013,8,18})
+    old_date = Date.from({3,8,18})
 
     assert { :ok, "a2013b" } = DateFmt.format(date, "a{YYYY}b")
 
@@ -16,21 +16,21 @@ defmodule DateFmtTest do
   end
 
   test :format_ordinal_day do
-    date = Date.from({{3,2,1}, {16,28,27}}, :utc)
+    date = Date.from({3,2,1})
 
     assert { :ok, "32" } = DateFmt.format(date, "{Dord}")
     assert { :ok, "032" } = DateFmt.format(date, "{0Dord}")
     assert { :ok, " 32" } = DateFmt.format(date, "{_Dord}")
 
-    date = Date.from({{3,12,31}, {16,28,27}}, :utc)
+    date = Date.from({3,12,31})
     assert { :ok, "365" } = DateFmt.format(date, "{Dord}")
 
-    date = Date.from({{3,1,1}, {16,28,27}}, :utc)
+    date = Date.from({3,1,1})
     assert { :ok, "001" } = DateFmt.format(date, "{0Dord}")
   end
 
   test :format_names do
-    date = Date.from({{2013,1,1}, {16,28,27}}, :utc)
+    date = Date.from({2013,1,1})
     assert { :ok, "Tue" } = DateFmt.format(date, "{WDshort}")
     assert { :ok, "Tuesday" } = DateFmt.format(date, "{WDfull}")
 
@@ -39,23 +39,23 @@ defmodule DateFmtTest do
   end
 
   test :format_ordinal_week do
-    date = Date.from({{2013,1,1}, {16,28,27}}, :utc)
+    date = Date.from({2013,1,1})
     assert { :ok, "0" } = DateFmt.format(date, "{Wmon}")
     assert { :ok, "0" } = DateFmt.format(date, "{Wsun}")
 
-    date = Date.from({{2013,1,6}, {16,28,27}}, :utc)
+    date = Date.from({2013,1,6})
     assert { :ok, "0" } = DateFmt.format(date, "{Wmon}")
     assert { :ok, "1" } = DateFmt.format(date, "{Wsun}")
 
-    date = Date.from({{2013,1,7}, {16,28,27}}, :utc)
+    date = Date.from({2013,1,7})
     assert { :ok, "1" } = DateFmt.format(date, "{Wmon}")
     assert { :ok, "1" } = DateFmt.format(date, "{Wsun}")
 
-    date = Date.from({{2012,1,1}, {16,28,27}}, :utc)
+    date = Date.from({2012,1,1})
     assert { :ok, "0" } = DateFmt.format(date, "{Wmon}")
     assert { :ok, "1" } = DateFmt.format(date, "{Wsun}")
 
-    date = Date.from({{2012,1,2}, {16,28,27}}, :utc)
+    date = Date.from({2012,1,2})
     assert { :ok, "1" } = DateFmt.format(date, "{Wmon}")
     assert { :ok, "1" } = DateFmt.format(date, "{Wsun}")
   end
@@ -65,8 +65,8 @@ defmodule DateFmtTest do
   end
 
   test :format_dates do
-    date = Date.from({{2013,8,18}, {16,28,27}}, :utc)
-    old_date = Date.from({{3,8,8}, {16,28,27}}, :utc)
+    date = Date.from({2013,8,18})
+    old_date = Date.from({3,8,8})
 
     assert { :ok, "2013-8-18" } = DateFmt.format(date, "{YYYY}-{M}-{D}")
     assert { :ok, "3/08/08" } = DateFmt.format(old_date, "{YYYY}/{0M}/{0D}")
@@ -98,6 +98,7 @@ defmodule DateFmtTest do
   end
 
   test :format_full do
+    assert nil
   end
 
   test :validate do
