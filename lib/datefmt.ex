@@ -17,7 +17,34 @@ defmodule DateFmt do
     ) |> wrap
   end
 
-  # Shortcut and efficient implementations for common formats
+  defp format_rfc(date, tz) do
+    { {year,month,day}, {hour,min,sec} } = date
+    day_name = Date.weekday_name(Date.weekday(date), :short)
+    month_name = Date.month_name(month, :short)
+    fstr = case tz do
+      { :name, tz_name } ->
+        if tz_name == "UTC" do
+          tz_name = "GMT"
+        end
+        "~s, ~2..0B ~s ~4..0B ~2..0B:~2..0B:~2..0B #{tz_name}"
+      { :offset, tz_offset } ->
+        sign = if tz_offset >= 0 do "+" else "-" end
+        tz_offset = abs(tz_offset)
+        tz_hrs = trunc(tz_offset)
+        tz_min = trunc((tz_offset - tz_hrs) * 60)
+        tz_spec = :io_lib.format("~s~2..0B~2..0B", [sign, tz_hrs, tz_min])
+        "~s, ~2..0B ~s ~4..0B ~2..0B:~2..0B:~2..0B #{tz_spec}"
+    end
+    :io_lib.format(fstr, [day_name, day, month_name, year, hour, min, sec])
+    |> wrap
+  end
+
+   #                                                             #
+  ### Shortcut and efficient implementations for common formats ###
+   #                                                             #
+
+  ## ISO 8601 ##
+
   def format(date, :iso) do
     format_iso(Date.universal(date), "Z")
   end
@@ -36,8 +63,8 @@ defmodule DateFmt do
     hour_offs = trunc(abs_offs)
     min_offs = round((abs_offs - hour_offs) * 60)
 
-    fstr = (offset < 0 && "-" || "+") <> "~2..0B~2..0B"
-    tz = :io_lib.format(fstr, [hour_offs, min_offs])
+    sign = if offset >= 0 do "+" else "-" end
+    tz = :io_lib.format("~s~2..0B~2..0B", [sign, hour_offs, min_offs])
 
     format_iso(local, tz)
   end
@@ -76,7 +103,25 @@ defmodule DateFmt do
     |> wrap
   end
 
-  # Generic formatting
+  ## RFC 1123 ##
+
+  def format(date, :rfc1123) do
+    local = Date.local(date)
+    { _, _, {_,tz_name} } = Date.Conversions.to_gregorian(date)
+    format_rfc(local, {:name, tz_name})
+  end
+
+  def format(date, :rfc1123z) do
+    local = Date.local(date)
+    { _, _, {tz_offset,_} } = Date.Conversions.to_gregorian(date)
+    format_rfc(local, {:offset, tz_offset})
+  end
+
+
+   #                      #
+  ### Generic formatting ###
+   #                      #
+
   def format(date, fmt) when is_binary(fmt) do
     case do_validate(fmt) do
       { :ok, parts } ->

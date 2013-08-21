@@ -165,21 +165,21 @@ defmodule DateFmtTest do
     assert { :ok, "2013-064" } = DateFmt.format(date, :iso_ordinal)
   end
 
-  #test :format_rfc do
-    #date = {{2013,3,5},{23,25,19}}
-    #assert D.format(D.from(date), :rfc1123)  == "Tue, 05 Mar 2013 23:25:19 GMT"
-    #assert D.format(D.from(date), :rfc1123z) == "Tue, 05 Mar 2013 23:25:19 +0000"
+  test :format_rfc1123 do
+    date = Date.from({{2013,3,5},{23,25,19}})
+    assert { :ok, "Tue, 05 Mar 2013 23:25:19 GMT" } = DateFmt.format(date, :rfc1123)
+    assert { :ok, "Tue, 05 Mar 2013 23:25:19 +0000" } = DateFmt.format(date, :rfc1123z)
 
-    #eet = D.timezone(2, "EET")
-    #date = D.from({{2013,3,5},{23,25,19}}, eet)
-    #assert D.format(date, :rfc1123)  == "Tue, 05 Mar 2013 23:25:19 EET"
-    #assert D.format(date, :rfc1123z) == "Tue, 05 Mar 2013 23:25:19 +0200"
+    eet = Date.timezone(2, "EET")
+    date = Date.from({{2013,3,5},{23,25,19}}, eet)
+    assert { :ok, "Tue, 05 Mar 2013 23:25:19 EET" } = DateFmt.format(date, :rfc1123)
+    assert { :ok, "Tue, 05 Mar 2013 23:25:19 +0200" } = DateFmt.format(date, :rfc1123z)
 
-    #pst = D.timezone(-8, "PST")
-    #date = D.from({{2013,3,5},{23,25,19}}, pst)
-    #assert D.format(date, :rfc1123)  == "Tue, 05 Mar 2013 23:25:19 PST"
-    #assert D.format(date, :rfc1123z) == "Tue, 05 Mar 2013 23:25:19 -0800"
-  #end
+    pst = Date.timezone(-8, "PST")
+    date = Date.from({{2013,3,5},{23,25,19}}, pst)
+    assert { :ok, "Tue, 05 Mar 2013 23:25:19 PST" } = DateFmt.format(date, :rfc1123)
+    assert { :ok, "Tue, 05 Mar 2013 23:25:19 -0800" } = DateFmt.format(date, :rfc1123z)
+  end
 
   test :validate do
     assert :ok = DateFmt.validate ""
