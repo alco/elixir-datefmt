@@ -73,31 +73,32 @@ defmodule DateFmt.Strftime do
 
   defp parse_directive(directive(flag: flag, width: width, dir: dir)) do
     val = case dir do
-      ?Y -> { :year,  4 }
-      ?y -> { :year2, 2 }
-      ?m -> { :month, 2 }
+      ?Y -> { :year,    4 }
+      ?y -> { :year2,   2 }
+      ?C -> { :century, 2 }
+      ?m -> { :month,   2 }
       ?B -> :mfull
       ?b -> :mshort
-      ?d -> { :day,   2 }
-      ?e -> { :day,   2 }
-      ?j -> { :oday,  3 }
+      ?d -> { :day,     2 }
+      ?e -> { :day,     2 }
+      ?j -> { :oday,    3 }
       ?H -> { :hour24,  2 }
       ?k -> { :hour24,  2 }
       ?I -> { :hour12,  2 }
       ?l -> { :hour12,  2 }
       ?P -> :am
       ?p -> :AM
-      ?M -> { :minute, 2 }
-      ?S -> { :second, 2 }
+      ?M -> { :minute,  2 }
+      ?S -> { :second,  2 }
       ?A -> :wdfull
       ?a -> :wdshort
-      ?u -> { :wday, 1 }
-      ?w -> { :wday0, 1 }
-      ?G -> { :iso_year, 4 }
+      ?u -> { :wday,      1 }
+      ?w -> { :wday0,     1 }
+      ?G -> { :iso_year,  4 }
       ?g -> { :iso_year2, 2 }
-      ?V -> { :iso_week, 2 }
-      ?U -> { :week_sun, 2 }
-      ?W -> { :week_mon, 2 }
+      ?V -> { :iso_week,  2 }
+      ?U -> { :week_sun,  2 }
+      ?W -> { :week_mon,  2 }
       ?z -> :zoffs
       ?Z -> :zname
     end
@@ -106,7 +107,7 @@ defmodule DateFmt.Strftime do
       { tag, w } ->
         width = max(w, width)
 
-        pad = if !flag and dir in [?k, ?l] do
+        pad = if !flag and dir in [?e, ?k, ?l] do
           " "
         else
           case flag do

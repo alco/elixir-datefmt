@@ -163,6 +163,7 @@ defmodule DateFmt do
             arg = case flag do
               :year      -> year
               :year2     -> rem(year, 100)
+              :century   -> div(year, 100)
               :month     -> month
               :day       -> day
               :oday      -> Date.daynum(date)
