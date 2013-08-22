@@ -12,7 +12,7 @@ defmodule DateFmtTest.Default do
     assert { :ok, "a   3b" } = format(old_date, "a{_YYYY}b")
     assert { :ok, "a3b" }  = format(old_date, "a{YY}b")
     assert { :ok, "a03b" } = format(old_date, "a{0YY}b")
-    assert { :ok, "a 3b" } = format(old_date, "a{_YY}b")
+    assert { :ok, "á 3ü" } = format(old_date, "á{_YY}ü")
   end
 
   test :format_ordinal_day do
@@ -150,18 +150,22 @@ defmodule DateFmtTest.Default do
     assert :ok = validate "Use {{ as oft{{en as you like{{"
     assert :ok = validate "Same go}}es for }}"
     assert :ok = validate "{{abc}}"
+    assert :ok = validate "abc } def"
 
-    assert {:error, "missing } (starting at 0)"} = validate "{"
-    assert {:error, "missing } (starting at 4)"} = validate "abc { def"
-    assert {:error, "extraneous } at 4"} = validate "abc } def"
+    assert {:error, "at 0: missing }"} = validate "{"
+    assert {:error, "at 4: missing }"} = validate "abc { def"
+    assert {:error, "at 4: extraneous { in directive"} = validate "abc { { def"
+    assert {:error, "at 4: bad directive"} = validate "abc {} def"
   end
 
-  test :tokenize_bins do
-    assert {:ok,[""]} = tokenize ""
-    assert {:ok,["abc"]} = tokenize "abc"
-    assert {:ok,["Use {{ as oft{{en as you like{{"]} = tokenize "Use {{ as oft{{en as you like{{"
-    assert {:ok,["Same go}}es for }}"]} = tokenize "Same go}}es for }}"
-    assert {:ok,["{{abc}}"]} = tokenize "{{abc}}"
+  test :tokens do
+    date = Date.now()
+    assert {:ok, "" } = format(date, "")
+    assert {:ok, "abc" } = format(date, "abc")
+    assert {:ok, "Use { as oft{en as you like{" } = format(date, "Use {{ as oft{{en as you like{{")
+    assert {:ok, "Same go}}es for }}" } = format(date, "Same go}}es for }}")
+    assert {:ok, "{{abc}}" } = format(date, "{{{{abc}}")
+    assert {:ok, "abc } def" } = format(date, "abc } def")
   end
 
   defp format(date, fmt) do
@@ -170,9 +174,5 @@ defmodule DateFmtTest.Default do
 
   defp validate(fmt) do
     DateFmt.validate(fmt)
-  end
-
-  defp tokenize(fmt) do
-    DateFmt.Default.tokenize(fmt)
   end
 end

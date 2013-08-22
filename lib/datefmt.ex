@@ -1,13 +1,26 @@
-# Don't worry, we will support a few flavours of formatting language.
-# * strftime
-# * Go's style
-# * my own format
-# * user-defined format languages
-
 defmodule DateFmt do
+  @moduledoc """
+  Date formatting and parsing.
+
+  This module provides an interface and core implementation for converting date
+  values into strings (formatting) or the other way around (parsing) according
+  to the specified template.
+
+  Multiple template formats are supported, each one provided by a separate
+  module. One can also implement a custom formatters for use with this module.
+  """
+
    #                                                             #
   ### Shortcut and efficient implementations for common formats ###
    #                                                             #
+
+  @doc """
+  Converts date values to strings according to the given template (aka format string).
+
+  `formatter` is either a string or a formatter spec. The latter is a tuple of the form `{ <function>, <pattern> }`
+  A raising version of `format/2`. Returns a string with formatted date or
+  raises an `ArgumentError`.
+  """
 
   @spec format(Date.dtz,
       :iso
@@ -146,15 +159,15 @@ defmodule DateFmt do
   @spec format(Date.dtz, String.t) :: {:ok, String.t} | {:error, String.t}
 
   def format(date, fmt) when is_binary(fmt) do
-    format(date, {:default, fmt})
+    format(date, fmt, :default)
   end
 
-  def format(date, {formatter, _template}=fmt) do
-    case tokenize(fmt) do
+  def format(date, fmt, formatter) when is_binary(fmt) do
+    case tokenize(fmt, formatter) do
       { :ok, parts } ->
         Enum.reduce(parts, [], fn
           ({:subfmt, sfmt}, acc) ->
-            { :ok, bin } = format(date, {formatter, sfmt})
+            { :ok, bin } = format(date, sfmt, formatter)
             [acc, bin]
 
           ({dir, fmt}, acc) ->
@@ -239,7 +252,11 @@ defmodule DateFmt do
   raises an `ArgumentError`.
   """
   def format!(date, fmt) do
-    case format(date, fmt) do
+    format!(date, fmt, :default)
+  end
+
+  def format!(date, fmt, formatter) do
+    case format(date, fmt, formatter) do
       { :ok, result } -> result
       { :error, reason } -> raise ArgumentError, message: "Bad format: #{reason}"
     end
@@ -298,14 +315,18 @@ defmodule DateFmt do
   ######################################################
 
   @doc """
-  Verfiy the validity of format string. The argument is either a string or
+  Verifies the validity of the given format string. The argument is either a string or
   formatter tuple.
 
   Returns `:ok` if the format string is clean, `{ :error, <reason> }`
   otherwise.
   """
   def validate(fmt) do
-    case tokenize(fmt) do
+    validate(fmt, :default)
+  end
+
+  def validate(fmt, formatter) do
+    case tokenize(fmt, formatter) do
       { :ok, _ } -> :ok
       error -> error
     end
@@ -313,19 +334,49 @@ defmodule DateFmt do
 
   ######################################################
 
-  defp tokenize(fmt) when is_binary(fmt) do
-    tokenize({:default, fmt})
+  defp tokenize(fmt, :default) when is_binary(fmt) do
+    do_tokenize(fmt, {&DateFmt.Default.process_directive/1, "{"})
   end
 
-  defp tokenize({:default, fmt}) when is_binary(fmt) do
-    DateFmt.Default.tokenize(fmt)
+  defp tokenize(fmt, :strftime) when is_binary(fmt) do
+    do_tokenize(fmt, {&DateFmt.Strftime.process_directive/1, "%"})
   end
 
-  defp tokenize({:strftime, fmt}) when is_binary(fmt) do
-    DateFmt.Strftime.tokenize(fmt)
+  defp tokenize(fmt, {formatter, pat})
+        when is_binary(fmt)
+         and is_function(formatter)
+         and is_binary(pat) do
+    do_tokenize(fmt, {formatter, pat})
   end
 
-  defp tokenize({formatter, fmt}) when is_function(formatter) and is_binary(fmt) do
-    formatter.(fmt)
+  defp do_tokenize(str, formatter) do
+    do_tokenize(str, formatter, 0, [], [])
+  end
+
+  defp do_tokenize("", _, _, parts, acc) do
+    { :ok, List.flatten([parts, String.from_char_list!(acc)]) }
+  end
+
+  defp do_tokenize(str, {formatter, pat}=fmt, pos, parts, acc) do
+    patsize = size(pat)
+    case str do
+      <<^pat :: [binary, size(patsize)], rest :: binary>> ->
+        case formatter.(rest) do
+          { :skip, length } ->
+            <<skip :: [binary, size(length)], rest :: binary>> = rest
+            do_tokenize(rest, fmt, pos + length, parts, [acc,skip])
+
+          { :ok, dir, length } ->
+            new_parts = [parts, String.from_char_list!(acc), dir]
+            <<_ :: [binary, size(length)], rest :: binary>> = rest
+            do_tokenize(rest, fmt, pos + length, new_parts, [])
+
+          { :error, reason } ->
+            { :error, "at #{pos}: #{reason}" }
+        end
+      _ ->
+        <<c :: utf8, rest :: binary>> = str
+        do_tokenize(rest, fmt, pos+1, parts, [acc, c])
+    end
   end
 end

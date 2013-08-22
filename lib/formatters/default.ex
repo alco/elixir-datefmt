@@ -10,88 +10,79 @@ defmodule DateFmt.Default do
   ## List of all directives
   """
 
-  def tokenize(fmt) when is_binary(fmt) do
-    tokenize(fmt, 0, [], [])
+  def process_directive("{" <> _) do
+    # false alarm
+    { :skip, 1 }
   end
 
-  defp tokenize("", _, parts, acc) do
-    { :ok, List.flatten([parts, String.from_char_list!(acc)]) }
-  end
-
-  defp tokenize("{{" <> rest, pos, parts, acc) do
-    tokenize(rest, pos+2, parts, [acc, "{{"])
-  end
-
-  defp tokenize("}}" <> rest, pos, parts, acc) do
-    tokenize(rest, pos+2, parts, [acc, "}}"])
-  end
-
-  defp tokenize("{" <> rest, pos, parts, acc) do
-    case get_flag(rest, []) do
-      { flag, rest } ->
-        case parse_flag(flag) do
-          {_,_}=new_flag ->
-            new_parts = [parts, String.from_char_list!(acc), new_flag]
-            tokenize(rest, pos + size(flag), new_parts, [])
-          :error ->
-            { :error, "bad flag at #{pos+1}" }
+  def process_directive(fmt) when is_binary(fmt) do
+    case scan_directive(fmt, 0) do
+      { :ok, pos } ->
+        length = pos-1
+        <<dirstr :: [binary, size(length)], _ :: binary>> = fmt
+        case parse_directive(dirstr) do
+          { :ok, directive } -> { :ok, directive, pos }
+          error              -> error
         end
-      :error -> { :error, "missing } (starting at #{pos})" }
+
+      error -> error
     end
   end
 
-  defp tokenize("}" <> _, pos, _, _) do
-    { :error, "extraneous } at #{pos}" }
+  ###
+
+  defp scan_directive("{" <> _, _) do
+    { :error, "extraneous { in directive" }
   end
 
-  defp tokenize(<<c :: utf8>> <> rest, pos, parts, acc) do
-    tokenize(rest, pos+1, parts, [acc, c])
+  defp scan_directive("", _) do
+    { :error, "missing }" }
   end
 
-  defp get_flag("}" <> rest, acc) do
-    { iolist_to_binary(acc), rest }
+  defp scan_directive("}" <> _, pos) do
+    { :ok, pos+1 }
   end
 
-  defp get_flag("", _) do
-    :error
+  defp scan_directive(<<_ :: utf8>> <> rest, pos) do
+    scan_directive(rest, pos+1)
   end
 
-  defp get_flag(<<c :: utf8>> <> rest, acc) do
-    get_flag(rest, [acc, c])
+  ###
+
+  # Sanity check on the modifier
+  defp parse_directive("0" <> dir) do
+    parse_directive(dir, "0")
   end
 
-  defp parse_flag("0" <> flag) do
-    do_parse_flag(flag, "0")
+  defp parse_directive("_" <> dir) do
+    parse_directive(dir, " ")
   end
 
-  defp parse_flag("_" <> flag) do
-    do_parse_flag(flag, " ")
+  defp parse_directive(dir) do
+    parse_directive(dir, nil)
   end
 
-  defp parse_flag(flag) do
-    do_parse_flag(flag, nil)
+  # Actual parsing
+  defp parse_directive(dir, nil)
+        when dir in ["Mshort", "Mfull",
+                     "WDshort", "WDfull",
+                     "am", "AM",
+                     "ZZZZ", "ZZ:ZZ"] do
+   { :ok, translate_directive(dir) }
   end
 
-  defp do_parse_flag(flag, nil)
-        when flag in ["Mshort", "Mfull",
-                      "WDshort", "WDfull",
-                      "am", "AM",
-                      "ZZZZ", "ZZ:ZZ"] do
-    do_convert_flag(flag)
-  end
-
-  defp do_parse_flag(flag, modifier)
-        when flag in ["YYYY", "YY", "M", "D", "Dord",
+  defp parse_directive(dir, modifier)
+        when dir in ["YYYY", "YY", "M", "D", "Dord",
                       "WYYYY", "WYY", "Wiso", "Wsun", "Wmon",
                       "WDmon", "WDsun",
                       "h24", "h12", "m", "s"] do
-    do_convert_flag(flag, modifier)
+    { :ok, translate_directive(dir, modifier) }
   end
 
-  defp do_parse_flag(_, _), do: :error
+  defp parse_directive(_, _), do: { :error, "bad directive" }
 
-  defp do_convert_flag(flag) do
-    tag = case flag do
+  defp translate_directive(dir) do
+    tag = case dir do
       "Mshort"  -> :mshort
       "Mfull"   -> :mfull
       "WDshort" -> :wdshort
@@ -104,8 +95,8 @@ defmodule DateFmt.Default do
     { tag, "~s" }
   end
 
-  defp do_convert_flag(flag, mod) do
-    { tag, width } = case flag do
+  defp translate_directive(dir, mod) do
+    { tag, width } = case dir do
       "YYYY"  -> { :year,      4 }
       "YY"    -> { :year2,     2 }
       "M"     -> { :month,     2 }

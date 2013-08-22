@@ -51,77 +51,77 @@ defmodule DateFmt.Strftime do
 
   defrecordp :directive, dir: nil, flag: nil, width: -1
 
-  def tokenize(fmt) when is_binary(fmt) do
-    tokenize(fmt, 0, [], [])
+  def process_directive("%" <> _) do
+    # false alarm
+    { :skip, 1 }
   end
 
-  defp tokenize("", _, parts, acc) do
-    { :ok, List.flatten([parts, String.from_char_list!(acc)]) }
-  end
-
-  defp tokenize("%%" <> rest, pos, parts, acc) do
-    tokenize(rest, pos+2, parts, [acc, "%"])
-  end
-
-  defp tokenize("%" <> rest, pos, parts, acc) do
-    case get_directive(rest) do
-      { dir, rest } ->
-        case parse_directive(dir) do
-          {_,_}=spec ->
-            new_parts = [parts, String.from_char_list!(acc), spec]
-            tokenize(rest, pos + size(dir), new_parts, [])
-          :error ->
-            { :error, "bad directive at #{pos+1}" }
+  def process_directive(fmt) when is_binary(fmt) do
+    case scan_directive(fmt, 0) do
+      { :ok, dir, length } ->
+        case translate_directive(dir) do
+          {_,_}=directive -> { :ok, directive, length }
+          error              -> error
         end
-      :error -> { :error, "missing } (starting at #{pos})" }
+
+      error -> error
     end
   end
 
-  defp tokenize(<<c :: utf8>> <> rest, pos, parts, acc) do
-    tokenize(rest, pos+1, parts, [acc, c])
+  ###
+
+  defp scan_directive(str, pos) do
+    scan_directive_flag(str, pos, directive())
   end
 
-  defp get_directive(text) do
-    get_directive_flag(text, directive())
+  ###
+
+  defp scan_directive_flag("::" <> rest, pos, dir) do
+    scan_directive_width(rest, pos+2, directive(dir, flag: "::"))
   end
 
-  defp get_directive_flag("::" <> rest, dir) do
-    get_directive_width(rest, directive(dir, flag: "::"))
+  defp scan_directive_flag(<<flag :: utf8, rest :: binary>>, pos, dir)
+        when flag in [?-, ?_, ?0, ?^, ?#, ?:] do
+    scan_directive_width(rest, pos+1, directive(dir, flag: flag))
   end
 
-  defp get_directive_flag(<<flag :: utf8, rest :: binary>>=str, dir) do
-    if flag in [?-, ?_, ?0, ?^, ?#, ?:] do
-      dir = directive(dir, flag: flag)
-    else
-      rest = str
-    end
-    get_directive_width(rest, dir)
+  defp scan_directive_flag(str, pos, dir) do
+    scan_directive_width(str, pos, dir)
   end
 
-  defp get_directive_width(<<digit :: utf8, rest :: binary>>=str, directive(width: width)=dir) do
-    if digit in ?0..?9 do
-      dir = directive(dir, width: width * 10 + digit - ?0)
-      get_directive_width(rest, dir)
-    else
-      get_directive_mod(str, dir)
-    end
+  ###
+
+  defp scan_directive_width(<<digit :: utf8, rest :: binary>>, pos, directive(width: width)=dir)
+        when digit in ?0..?9 do
+    new_width = width * 10 + digit - ?0
+    scan_directive_width(rest, pos+1, directive(dir, width: new_width))
   end
 
-  defp get_directive_mod(<<mod :: utf8>> <> rest, dir)
+  defp scan_directive_width(str, pos, dir) do
+    scan_directive_modifier(str, pos, dir)
+  end
+
+  ###
+
+  defp scan_directive_modifier(<<mod :: utf8>> <> rest, pos, dir)
         when mod in [?E, ?O] do
     # ignore those modifiers
-    get_directive_final(rest, dir)
+    scan_directive_final(rest, pos+1, dir)
   end
 
-  defp get_directive_mod(other, dir) do
-    get_directive_final(other, dir)
+  defp scan_directive_modifier(str, pos, dir) do
+    scan_directive_final(str, pos, dir)
   end
 
-  defp get_directive_final(<<char :: utf8>> <> rest, dir) do
-    { directive(dir, dir: char), rest }
+  ###
+
+  defp scan_directive_final(<<char :: utf8>> <> _, pos, dir) do
+    { :ok, directive(dir, dir: char), pos+1 }
   end
 
-  defp parse_directive(directive(flag: flag, width: width, dir: dir)) do
+  ###
+
+  defp translate_directive(directive(flag: flag, width: width, dir: dir)) do
     val = case dir do
       ?Y -> { :year,    4 }
       ?y -> { :year2,   2 }
@@ -163,7 +163,7 @@ defmodule DateFmt.Strftime do
     end
 
     case val do
-      { :subfmt, fmt }=x -> x
+      { :subfmt, _ }=result -> result
 
       { tag, w } ->
         width = max(w, width)
