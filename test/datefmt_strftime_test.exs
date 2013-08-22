@@ -107,9 +107,9 @@ defmodule DateFmtTest.Strftime do
   end
 
   test :format_times do
-    date = Date.from({{2013,8,18}, {16,28,27}}, :utc)
-    date2 = Date.from({{2013,8,18}, {12,3,4}}, :utc)
-    date_midnight = Date.from({{2013,8,18}, {0,3,4}}, :utc)
+    date = Date.from({{2013,8,18}, {16,28,27}})
+    date2 = Date.from({{2013,8,18}, {12,3,4}})
+    date_midnight = Date.from({{2013,8,18}, {0,3,4}})
 
     assert { :ok, "16" } = format(date, "%H")
     assert { :ok, "16" } = format(date, "%k")
@@ -128,6 +128,11 @@ defmodule DateFmtTest.Strftime do
     assert { :ok, "AM 0" } = format(date_midnight, "%p %-k")
     assert { :ok, "AM 00" } = format(date_midnight, "%p %H")
     assert { :ok, "AM  0" } = format(date_midnight, "%p %k")
+  end
+
+  test :combined_directives do
+    date = Date.from({{2013,8,18}, {16,28,27}})
+    assert { :ok, "08/18/13" } = format(date, "%D")
   end
 
   test :validate do

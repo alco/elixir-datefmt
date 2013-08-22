@@ -93,9 +93,9 @@ defmodule DateFmtTest.Default do
   end
 
   test :format_times do
-    date = Date.from({{2013,8,18}, {16,28,27}}, :utc)
-    date2 = Date.from({{2013,8,18}, {12,3,4}}, :utc)
-    date_midnight = Date.from({{2013,8,18}, {0,3,4}}, :utc)
+    date = Date.from({{2013,8,18}, {16,28,27}})
+    date2 = Date.from({{2013,8,18}, {12,3,4}})
+    date_midnight = Date.from({{2013,8,18}, {0,3,4}})
 
     assert { :ok, "16" } = format(date, "{h24}")
     assert { :ok, "4" } = format(date, "{h12}")

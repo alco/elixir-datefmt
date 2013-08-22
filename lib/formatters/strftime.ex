@@ -101,9 +101,14 @@ defmodule DateFmt.Strftime do
       ?W -> { :week_mon,  2 }
       ?z -> :zoffs
       ?Z -> :zname
+
+      # combined directives
+      ?D -> { :subfmt, "%m/%d/%y" }
     end
 
     case val do
+      { :subfmt, fmt }=x -> x
+
       { tag, w } ->
         width = max(w, width)
 

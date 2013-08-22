@@ -145,73 +145,21 @@ defmodule DateFmt do
 
   @spec format(Date.dtz, String.t) :: {:ok, String.t} | {:error, String.t}
 
-  def format(date, fmt) do
+  def format(date, fmt) when is_binary(fmt) do
+    format(date, {:default, fmt})
+  end
+
+  def format(date, {formatter, _template}=fmt) do
     case tokenize(fmt) do
       { :ok, parts } ->
-        {{year,month,day}, {hour,min,sec}} = Date.local(date)
-
-        start_of_year = Date.set(date, [month: 1, day: 1])
-        {iso_year, iso_week} = Date.weeknum(date)
-
-        get_week_no = fn jan1weekday ->
-          first_monday = rem(7 - jan1weekday, 7) + 1
-          div(Date.daynum(date) - first_monday + 7, 7)
-        end
-
         Enum.reduce(parts, [], fn
-          ({flag, fmt}, acc) ->
-            arg = case flag do
-              :year      -> year
-              :year2     -> rem(year, 100)
-              :century   -> div(year, 100)
-              :month     -> month
-              :day       -> day
-              :oday      -> Date.daynum(date)
-              :wday      -> Date.weekday(date)
-              :wday0     -> rem(Date.weekday(date), 7)
-              :iso_year  -> iso_year
-              :iso_year2 -> rem(iso_year, 100)
-              :iso_week  -> iso_week
-              :week_sun ->
-                get_week_no.(rem Date.weekday(start_of_year), 7)
-              :week_mon ->
-                get_week_no.(Date.weekday(start_of_year) - 1)
-              :hour24 -> hour
-              :hour12 when hour in [0, 12] -> 12
-              :hour12 -> rem(hour, 12)
-              :minute -> min
-              :second -> sec
-              :mshort ->
-                Date.month_name(month, :short)
-              :mfull ->
-                Date.month_name(month, :full)
-              :wdshort ->
-                wday = Date.weekday(date)
-                Date.weekday_name(wday, :short)
-              :wdfull ->
-                wday = Date.weekday(date)
-                Date.weekday_name(wday, :full)
-              :am -> if hour < 12 do "am" else "pm" end
-              :AM -> if hour < 12 do "AM" else "PM" end
-              :zname ->
-                {_,_,{_,tz_name}} = Date.Conversions.to_gregorian(date)
-                tz_name
-              :zoffs ->
-                {_,_,{tz_offset,_}} = Date.Conversions.to_gregorian(date)
-                { sign, hrs, min, _ } = split_tz(tz_offset)
-                { sign, hrs, min }
-              :zoffs_sec ->
-                {_,_,{tz_offset,_}} = Date.Conversions.to_gregorian(date)
-                split_tz(tz_offset)
-            end
-            case arg do
-              {a, b, c, d} ->
-                [acc, :io_lib.format(fmt, [a, b, c, d])]
-              {a, b, c} ->
-                [acc, :io_lib.format(fmt, [a, b, c])]
-              other ->
-                [acc, :io_lib.format(fmt, [other])]
-            end
+          ({:subfmt, sfmt}, acc) ->
+            { :ok, bin } = format(date, {formatter, sfmt})
+            [acc, bin]
+
+          ({dir, fmt}, acc) ->
+            args = format_directive(date, dir)
+            [acc, :io_lib.format(fmt, args)]
 
           (bin, acc) when is_binary(bin) ->
             [acc, bin]
@@ -220,6 +168,70 @@ defmodule DateFmt do
       error -> error
     end
   end
+
+  defp format_directive(date, dir) do
+    {{year,month,day}, {hour,min,sec}} = Date.local(date)
+
+    start_of_year = Date.set(date, [month: 1, day: 1])
+    {iso_year, iso_week} = Date.weeknum(date)
+
+    get_week_no = fn jan1weekday ->
+      first_monday = rem(7 - jan1weekday, 7) + 1
+      div(Date.daynum(date) - first_monday + 7, 7)
+    end
+
+    result = case dir do
+      :year      -> year
+      :year2     -> rem(year, 100)
+      :century   -> div(year, 100)
+      :month     -> month
+      :day       -> day
+      :oday      -> Date.daynum(date)
+      :wday      -> Date.weekday(date)
+      :wday0     -> rem(Date.weekday(date), 7)
+      :iso_year  -> iso_year
+      :iso_year2 -> rem(iso_year, 100)
+      :iso_week  -> iso_week
+      :week_sun ->
+        get_week_no.(rem Date.weekday(start_of_year), 7)
+      :week_mon ->
+        get_week_no.(Date.weekday(start_of_year) - 1)
+      :hour24 -> hour
+      :hour12 when hour in [0, 12] -> 12
+      :hour12 -> rem(hour, 12)
+      :minute -> min
+      :second -> sec
+      :mshort ->
+        Date.month_name(month, :short)
+      :mfull ->
+        Date.month_name(month, :full)
+      :wdshort ->
+        wday = Date.weekday(date)
+        Date.weekday_name(wday, :short)
+      :wdfull ->
+        wday = Date.weekday(date)
+        Date.weekday_name(wday, :full)
+      :am -> if hour < 12 do "am" else "pm" end
+      :AM -> if hour < 12 do "AM" else "PM" end
+      :zname ->
+        {_,_,{_,tz_name}} = Date.Conversions.to_gregorian(date)
+        tz_name
+      :zoffs ->
+        {_,_,{tz_offset,_}} = Date.Conversions.to_gregorian(date)
+        { sign, hrs, min, _ } = split_tz(tz_offset)
+        { sign, hrs, min }
+      :zoffs_sec ->
+        {_,_,{tz_offset,_}} = Date.Conversions.to_gregorian(date)
+        split_tz(tz_offset)
+    end
+    if is_tuple(result) do
+      tuple_to_list(result)
+    else
+      [result]
+    end
+  end
+
+  ####
 
   @doc """
   A raising version of `format/2`. Returns a string with formatted date or
@@ -300,6 +312,10 @@ defmodule DateFmt do
 
   ######################################################
 
+  defp tokenize(fmt) when is_binary(fmt) do
+    tokenize({:default, fmt})
+  end
+
   defp tokenize({:default, fmt}) when is_binary(fmt) do
     DateFmt.Default.tokenize(fmt)
   end
@@ -310,9 +326,5 @@ defmodule DateFmt do
 
   defp tokenize({formatter, fmt}) when is_function(formatter) and is_binary(fmt) do
     formatter.(fmt)
-  end
-
-  defp tokenize(fmt) when is_binary(fmt) do
-    tokenize({:default, fmt})
   end
 end
