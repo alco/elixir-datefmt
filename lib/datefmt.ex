@@ -22,6 +22,7 @@ defmodule DateFmt do
     | :rfc3339
     | :ansic
     | :unix
+    | :kitchen
     )
   :: {:ok, String.t} | {:error, String.t}
 
@@ -126,6 +127,15 @@ defmodule DateFmt do
 
     fstr = "~s ~s ~2.. B ~2..0B:~2..0B:~2..0B #{tz_name} ~4..0B"
     :io_lib.format(fstr, [day_name, month_name, day, hour, min, sec, year])
+    |> wrap
+  end
+
+  #Kitchen     = "3:04PM"
+  def format(date, :kitchen) do
+    { _, {hour,min,_} } = Date.local(date)
+    am = if hour < 12 do "AM" else "PM" end
+    hour = if hour in [0, 12] do 12 else rem(hour, 12) end
+    :io_lib.format("~B:~2..0B~s", [hour, min, am])
     |> wrap
   end
 
