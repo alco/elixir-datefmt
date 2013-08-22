@@ -105,6 +105,11 @@ defmodule DateFmt.Strftime do
 
       # combined directives
       ?D -> { :subfmt, "%m/%d/%y" }
+      ?F -> { :subfmt, "%Y-%m-%d" }
+      ?R -> { :subfmt, "%H:%M" }
+      ?r -> { :subfmt, "%I:%M:%S %p" }
+      ?T -> { :subfmt, "%H:%M:%S" }
+      ?v -> { :subfmt, "%e-%b-%Y" }
     end
 
     case val do

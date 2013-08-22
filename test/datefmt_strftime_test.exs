@@ -139,6 +139,13 @@ defmodule DateFmtTest.Strftime do
   test :combined_directives do
     date = Date.from({{2013,8,18}, {16,28,27}})
     assert { :ok, "08/18/13" } = format(date, "%D")
+    assert { :ok, "2013-08-18" } = format(date, "%F")
+    assert { :ok, "16:28" } = format(date, "%R")
+    assert { :ok, "04:28:27 PM" } = format(date, "%r")
+    assert { :ok, "16:28:27" } = format(date, "%T")
+
+    date = Date.from({{2013,8,1}, {16,28,27}})
+    assert { :ok, " 1-Aug-2013" } = format(date, "%v")
   end
 
   test :validate do
