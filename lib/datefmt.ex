@@ -11,7 +11,6 @@ defmodule DateFmt do
 
   @spec format(Date.dtz,
       :iso
-    | :iso_local
     | :iso_full
     | :iso_date
     | :iso_time
@@ -26,10 +25,6 @@ defmodule DateFmt do
 
   def format(date, :iso) do
     format_iso(Date.universal(date), "Z")
-  end
-
-  def format(date, :iso_local) do
-   format_iso(Date.local(date), "")
   end
 
   def format(date, :iso_full) do

@@ -6,7 +6,6 @@ defmodule DateFmtTest do
     date = Date.from({{2013,3,5},{23,25,19}}, eet)
 
     assert { :ok, "2013-03-05T21:25:19Z" } = DateFmt.format(date, :iso)
-    assert { :ok, "2013-03-05T23:25:19" } = DateFmt.format(date, :iso_local)
     assert { :ok, "2013-03-05T23:25:19+0200" } = DateFmt.format(date, :iso_full)
 
     pst = Date.timezone(-8, "PST")
