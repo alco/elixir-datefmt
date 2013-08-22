@@ -38,7 +38,16 @@ defmodule DateFmtTest do
   end
 
   test :format_common do
-    date = Date.from({{2013,3,5},{23,25,19}})
+    local = {{2013,3,5},{23,25,19}}
+
+    date = Date.from(local)
+    assert { :ok, "2013-03-05T23:25:19Z" } = DateFmt.format(date, :rfc3339)
+
+    eet = Date.timezone(2.0, "EET")
+    assert { :ok, "2013-03-05T23:25:19+02:00" } = DateFmt.format(Date.from(local, eet), :rfc3339)
+    pst = Date.timezone(-8.0, "PST")
+    assert { :ok, "2013-03-05T23:25:19-08:00" } = DateFmt.format(Date.from(local, pst), :rfc3339)
+
     assert { :ok, "Tue Mar  5 23:25:19 2013" } = DateFmt.format(date, :ansic)
     assert { :ok, "Tue Mar  5 23:25:19 UTC 2013" } = DateFmt.format(date, :unix)
   end

@@ -19,6 +19,7 @@ defmodule DateFmt do
     | :iso_ordinal
     | :rfc1123
     | :rfc1123z
+    | :rfc3339
     | :ansic
     | :unix
     )
@@ -88,6 +89,21 @@ defmodule DateFmt do
   end
 
   ## Other common formats ##
+
+  # This is similar to ISO, but using xx:xx format for time zone offset (as
+  # opposed to xxxx)
+  def format(date, :rfc3339) do
+    local = Date.local(date)
+
+    { _, _, {offset,_} } = Date.Conversions.to_gregorian(date)
+    tz = if offset == 0 do
+      "Z"
+    else
+      { sign, hrs, min, _ } = split_tz(offset)
+      :io_lib.format("~s~2..0B:~2..0B", [sign, hrs, min])
+    end
+    format_iso(local, tz)
+  end
 
   #ANSIC       = "Mon Jan _2 15:04:05 2006"
   def format(date, :ansic) do
