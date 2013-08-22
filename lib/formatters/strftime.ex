@@ -1,4 +1,54 @@
 defmodule DateFmt.Strftime do
+  @moduledoc """
+  Date formatting language defined by the `strftime` function from the Standard
+  C Library.
+
+  This implementation in Elixir is mostly compatible with `strftime`. The
+  exception is the absence of locale-depended results. All directives that imply
+  textual result will produce English names and abbreviations.
+
+  A complete reference of the directives implemented here is given below.
+
+  ## Directive format
+
+  ## List of all directives
+
+  ### Years and centuries
+
+  * `%Y` -
+  * `%Y` -
+  * `%Y` -
+  * `%Y` -
+  * `%Y` -
+
+  ### Months
+
+  * `%Y` -
+  * `%Y` -
+  * `%Y` -
+  * `%Y` -
+  * `%Y` -
+
+  ### Weeks, days, and days of week
+
+  * `%Y` -
+  * `%Y` -
+  * `%Y` -
+  * `%Y` -
+
+  ### Time
+
+  * `%Y` -
+  * `%Y` -
+  * `%Y` -
+
+  ### Compounds
+
+  * `%Y` -
+  * `%Y` -
+  * `%Y` -
+  """
+
   defrecordp :directive, dir: nil, flag: nil, width: -1
 
   def tokenize(fmt) when is_binary(fmt) do

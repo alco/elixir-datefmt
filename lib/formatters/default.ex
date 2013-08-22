@@ -1,4 +1,15 @@
 defmodule DateFmt.Default do
+  @moduledoc """
+  Date formatting language used by default in the `DateFmt` module.
+
+  This is a novel formatting language introduced with `DateFmt`. Its main
+  advantage is simplicity and usage of mnemonics that are easy to memorize.
+
+  ## Directive format
+
+  ## List of all directives
+  """
+
   def tokenize(fmt) when is_binary(fmt) do
     tokenize(fmt, 0, [], [])
   end
