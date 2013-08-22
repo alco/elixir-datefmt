@@ -74,10 +74,7 @@ defmodule DateFmt do
 
   def format(date, :iso_ordinal) do
     {{year,_,_},_} = Date.universal(date)
-
-    start_of_year = Date.set(date, [month: 1, day: 1])
-    day_no = 1 + Date.diff(start_of_year, date, :day)
-
+    day_no = Date.daynum(date)
     :io_lib.format("~4..0B-~3..0B", [year, day_no])
     |> wrap
   end
@@ -109,12 +106,11 @@ defmodule DateFmt do
         {{year,month,day}, {hour,min,sec}} = Date.local(date)
 
         start_of_year = Date.set(date, [month: 1, day: 1])
-        day_no = 1 + Date.diff(start_of_year, date, :day)
         {iso_year, iso_week} = Date.weeknum(date)
 
         get_week_no = fn jan1weekday ->
           first_monday = rem(7 - jan1weekday, 7) + 1
-          div(day_no - first_monday + 7, 7)
+          div(Date.daynum(date) - first_monday + 7, 7)
         end
 
         Enum.reduce(parts, [], fn
@@ -124,7 +120,7 @@ defmodule DateFmt do
               :year2     -> rem(year, 100)
               :month     -> month
               :day       -> day
-              :oday      -> day_no
+              :oday      -> Date.daynum(date)
               :wday      -> Date.weekday(date)
               :wday0     -> rem(Date.weekday(date), 7)
               :iso_year  -> iso_year
