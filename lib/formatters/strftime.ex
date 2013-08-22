@@ -1,5 +1,5 @@
 defmodule DateFmt.Strftime do
-  defrecordp :directive, dir: nil, flag: nil, width: 0
+  defrecordp :directive, dir: nil, flag: nil, width: -1
 
   def tokenize(fmt) when is_binary(fmt) do
     tokenize(fmt, 0, [], [])
@@ -90,6 +90,7 @@ defmodule DateFmt.Strftime do
       ?p -> :AM
       ?M -> { :minute,  2 }
       ?S -> { :second,  2 }
+      ?s -> { :nsec,   -1 }
       ?A -> :wdfull
       ?a -> :wdshort
       ?u -> { :wday,      1 }
@@ -111,16 +112,16 @@ defmodule DateFmt.Strftime do
 
       { tag, w } ->
         width = max(w, width)
-
-        pad = if !flag and dir in [?e, ?k, ?l] do
-          " "
-        else
-          case flag do
-            ?-    -> nil
-            ?_    -> " "
-            nil   -> "0"
-            other -> <<other :: utf8>>
-          end
+        pad = cond do
+          width < 0 -> nil
+          !flag and dir in [?e, ?k, ?l] -> " "
+          true ->
+            case flag do
+              ?-    -> nil
+              ?_    -> " "
+              nil   -> "0"
+              other -> <<other :: utf8>>
+            end
         end
 
         { tag, pad && "~#{width}..#{pad}B" || "~B" }

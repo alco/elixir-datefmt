@@ -201,6 +201,7 @@ defmodule DateFmt do
       :hour12 -> rem(hour, 12)
       :minute -> min
       :second -> sec
+      :nsec   -> Date.to_sec(date)
       :mshort ->
         Date.month_name(month, :short)
       :mfull ->

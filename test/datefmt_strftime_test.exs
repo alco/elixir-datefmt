@@ -128,6 +128,12 @@ defmodule DateFmtTest.Strftime do
     assert { :ok, "AM 0" } = format(date_midnight, "%p %-k")
     assert { :ok, "AM 00" } = format(date_midnight, "%p %H")
     assert { :ok, "AM  0" } = format(date_midnight, "%p %k")
+
+    fmt = "#{Date.to_sec(date)}"
+    assert { :ok, ^fmt } = format(date, "%s")
+
+    date = Date.from({{2001,9,9},{1,46,40}})
+    assert { :ok, "1000000000" } = format(date, "%s")
   end
 
   test :combined_directives do
