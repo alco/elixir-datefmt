@@ -145,10 +145,34 @@ defmodule DateFmt do
               :wdfull ->
                 wday = Date.weekday(date)
                 Date.weekday_name(wday, :full)
-              :am     -> if hour < 12 do "am" else "pm" end
-              :AM     -> if hour < 12 do "AM" else "PM" end
+              :am -> if hour < 12 do "am" else "pm" end
+              :AM -> if hour < 12 do "AM" else "PM" end
+              :zname ->
+                {_,_,{_,tz_name}} = Date.Conversions.to_gregorian(date)
+                tz_name
+              :zoffs ->
+                {_,_,{tz_offset,_}} = Date.Conversions.to_gregorian(date)
+                sign = tz_offset >= 0 && "+" || "-"
+                tz_offset = abs(tz_offset)
+                hrs = trunc(tz_offset)
+                min = trunc((tz_offset - hrs) * 60)
+                { sign, hrs, min }
+              :zoffs_sec ->
+                {_,_,{tz_offset,_}} = Date.Conversions.to_gregorian(date)
+                sign = tz_offset >= 0 && "+" || "-"
+                tz_offset = abs(tz_offset)
+                hrs = trunc(tz_offset)
+                min = trunc((tz_offset - hrs) * 60)
+                { sign, hrs, min, 0 }
             end
-            [acc, :io_lib.format(fmt, [arg])]
+            case arg do
+              {a, b, c, d} ->
+                [acc, :io_lib.format(fmt, [a, b, c, d])]
+              {a, b, c} ->
+                [acc, :io_lib.format(fmt, [a, b, c])]
+              other ->
+                [acc, :io_lib.format(fmt, [other])]
+            end
 
           (bin, acc) when is_binary(bin) ->
             [acc, bin]

@@ -35,6 +35,10 @@ defmodule DateFmt.Strftime do
     get_directive_flag(text, directive())
   end
 
+  defp get_directive_flag("::" <> rest, dir) do
+    get_directive_width(rest, directive(dir, flag: "::"))
+  end
+
   defp get_directive_flag(<<flag :: utf8, rest :: binary>>=str, dir) do
     if flag in [?-, ?_, ?0, ?^, ?#, ?:] do
       dir = directive(dir, flag: flag)
@@ -94,6 +98,8 @@ defmodule DateFmt.Strftime do
       ?V -> { :iso_week, 2 }
       ?U -> { :week_sun, 2 }
       ?W -> { :week_mon, 2 }
+      ?z -> :zoffs
+      ?Z -> :zname
     end
 
     case val do
@@ -113,7 +119,20 @@ defmodule DateFmt.Strftime do
 
         { tag, pad && "~#{width}..#{pad}B" || "~B" }
 
-      tag -> { tag, "~s" }
+      :zoffs ->
+        case flag do
+          nil  -> { :zoffs, "~s~2..0B~2..0B" }
+          ?:   -> { :zoffs, "~s~2..0B:~2..0B" }
+          "::" -> { :zoffs_sec, "~s~2..0B:~2..0B:~2..0B" }
+          _ -> raise ArgumentError, message: "Invalid flag for %z"
+        end
+
+      tag ->
+        if nil?(flag) do
+          { tag, "~s" }
+        else
+          raise ArgumentError, message: "Invalid flag for %z"
+        end
     end
   end
 end

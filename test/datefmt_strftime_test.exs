@@ -76,7 +76,19 @@ defmodule DateFmtTest.Strftime do
   end
 
   test :format_zones do
-    assert nil
+    eet = Date.timezone(2.0, "EET")
+    date = Date.from({2007,11,19}, eet)
+    assert { :ok, "EET" } = format(date, "%Z")
+    assert { :ok, "+0200" } = format(date, "%z")
+    assert { :ok, "+02:00" } = format(date, "%:z")
+    assert { :ok, "+02:00:00" } = format(date, "%::z")
+
+    pst = Date.timezone(-8.0, "PST")
+    date = Date.from({2007,11,19}, pst)
+    assert { :ok, "PST" } = format(date, "%Z")
+    assert { :ok, "-0800" } = format(date, "%z")
+    assert { :ok, "-08:00" } = format(date, "%:z")
+    assert { :ok, "-08:00:00" } = format(date, "%::z")
   end
 
   test :format_dates do
