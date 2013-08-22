@@ -36,4 +36,10 @@ defmodule DateFmtTest do
     assert { :ok, "Tue, 05 Mar 2013 23:25:19 PST" } = DateFmt.format(date, :rfc1123)
     assert { :ok, "Tue, 05 Mar 2013 23:25:19 -0800" } = DateFmt.format(date, :rfc1123z)
   end
+
+  test :format_common do
+    date = Date.from({{2013,3,5},{23,25,19}})
+    assert { :ok, "Tue Mar  5 23:25:19 2013" } = DateFmt.format(date, :ansic)
+    assert { :ok, "Tue Mar  5 23:25:19 UTC 2013" } = DateFmt.format(date, :unix)
+  end
 end

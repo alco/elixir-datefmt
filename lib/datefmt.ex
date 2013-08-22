@@ -18,7 +18,10 @@ defmodule DateFmt do
     | :iso_week_day
     | :iso_ordinal
     | :rfc1123
-    | :rfc1123z)
+    | :rfc1123z
+    | :ansic
+    | :unix
+    )
   :: {:ok, String.t} | {:error, String.t}
 
   ## ISO 8601 ##
@@ -33,12 +36,8 @@ defmodule DateFmt do
 
     { _, _, {offset,_} } = Date.Conversions.to_gregorian(date)
 
-    abs_offs = abs(offset)
-    hour_offs = trunc(abs_offs)
-    min_offs = round((abs_offs - hour_offs) * 60)
-
-    sign = if offset >= 0 do "+" else "-" end
-    tz = :io_lib.format("~s~2..0B~2..0B", [sign, hour_offs, min_offs])
+    { sign, hrs, min, _ } = split_tz(offset)
+    tz = :io_lib.format("~s~2..0B~2..0B", [sign, hrs, min])
 
     format_iso(local, tz)
   end
@@ -88,6 +87,31 @@ defmodule DateFmt do
     format_rfc(local, {:offset, tz_offset})
   end
 
+  ## Other common formats ##
+
+  #ANSIC       = "Mon Jan _2 15:04:05 2006"
+  def format(date, :ansic) do
+    { {year,month,day}, {hour,min,sec} } = Date.local(date)
+    day_name = Date.weekday_name(Date.weekday(date), :short)
+    month_name = Date.month_name(month, :short)
+
+    fstr = "~s ~s ~2.. B ~2..0B:~2..0B:~2..0B ~4..0B"
+    :io_lib.format(fstr, [day_name, month_name, day, hour, min, sec, year])
+    |> wrap
+  end
+
+  #UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
+  def format(date, :unix) do
+    { {year,month,day}, {hour,min,sec} } = Date.local(date)
+    day_name = Date.weekday_name(Date.weekday(date), :short)
+    month_name = Date.month_name(month, :short)
+
+    {_,_,{_,tz_name}} = Date.Conversions.to_gregorian(date)
+
+    fstr = "~s ~s ~2.. B ~2..0B:~2..0B:~2..0B #{tz_name} ~4..0B"
+    :io_lib.format(fstr, [day_name, month_name, day, hour, min, sec, year])
+    |> wrap
+  end
 
    #                      #
   ### Generic formatting ###
@@ -147,18 +171,11 @@ defmodule DateFmt do
                 tz_name
               :zoffs ->
                 {_,_,{tz_offset,_}} = Date.Conversions.to_gregorian(date)
-                sign = tz_offset >= 0 && "+" || "-"
-                tz_offset = abs(tz_offset)
-                hrs = trunc(tz_offset)
-                min = trunc((tz_offset - hrs) * 60)
+                { sign, hrs, min, _ } = split_tz(tz_offset)
                 { sign, hrs, min }
               :zoffs_sec ->
                 {_,_,{tz_offset,_}} = Date.Conversions.to_gregorian(date)
-                sign = tz_offset >= 0 && "+" || "-"
-                tz_offset = abs(tz_offset)
-                hrs = trunc(tz_offset)
-                min = trunc((tz_offset - hrs) * 60)
-                { sign, hrs, min, 0 }
+                split_tz(tz_offset)
             end
             case arg do
               {a, b, c, d} ->
@@ -208,15 +225,21 @@ defmodule DateFmt do
         end
         "~s, ~2..0B ~s ~4..0B ~2..0B:~2..0B:~2..0B #{tz_name}"
       { :offset, tz_offset } ->
-        sign = if tz_offset >= 0 do "+" else "-" end
-        tz_offset = abs(tz_offset)
-        tz_hrs = trunc(tz_offset)
-        tz_min = trunc((tz_offset - tz_hrs) * 60)
+        { sign, tz_hrs, tz_min, _ } = split_tz(tz_offset)
         tz_spec = :io_lib.format("~s~2..0B~2..0B", [sign, tz_hrs, tz_min])
         "~s, ~2..0B ~s ~4..0B ~2..0B:~2..0B:~2..0B #{tz_spec}"
     end
     :io_lib.format(fstr, [day_name, day, month_name, year, hour, min, sec])
     |> wrap
+  end
+
+  defp split_tz(offset) do
+    sign = if offset >= 0 do "+" else "-" end
+    offset = abs(offset)
+    hrs = trunc(offset)
+    min = trunc((offset - hrs) * 60)
+    sec = trunc((offset - hrs - min) * 3600)
+    { sign, hrs, min, sec }
   end
 
   defp wrap(formatted) do
