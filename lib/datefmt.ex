@@ -171,8 +171,8 @@ defmodule DateFmt do
             [acc, bin]
 
           ({dir, fmt}, acc) ->
-            args = format_directive(date, dir)
-            [acc, :io_lib.format(fmt, args)]
+            arg = format_directive(date, dir)
+            [acc, :io_lib.format(fmt, [arg])]
 
           (bin, acc) when is_binary(bin) ->
             [acc, bin]
@@ -193,53 +193,51 @@ defmodule DateFmt do
       div(Date.daynum(date) - first_monday + 7, 7)
     end
 
-    result = case dir do
+    case dir do
       :year      -> year
       :year2     -> rem(year, 100)
       :century   -> div(year, 100)
-      :month     -> month
-      :day       -> day
-      :oday      -> Date.daynum(date)
-      :wday      -> Date.weekday(date)
-      :wday0     -> rem(Date.weekday(date), 7)
       :iso_year  -> iso_year
       :iso_year2 -> rem(iso_year, 100)
+
+      :month     -> month
+      :mshort    -> month_name_short(month)
+      :mfull     -> month_name_full(month)
+
+      :day       -> day
+      :oday      -> Date.daynum(date)
+      :wday_mon  -> Date.weekday(date)
+      :wday_sun  -> rem(Date.weekday(date), 7)
+      :wdshort   -> weekday_name_short(Date.weekday(date))
+      :wdfull    -> weekday_name_full(Date.weekday(date))
+
       :iso_week  -> iso_week
-      :week_sun ->
-        get_week_no.(rem Date.weekday(start_of_year), 7)
-      :week_mon ->
-        get_week_no.(Date.weekday(start_of_year) - 1)
-      :hour24 -> hour
+      :week_mon  -> get_week_no.(Date.weekday(start_of_year) - 1)
+      :week_sun  -> get_week_no.(rem Date.weekday(start_of_year), 7)
+
+      :hour24    -> hour
       :hour12 when hour in [0, 12] -> 12
-      :hour12 -> rem(hour, 12)
-      :minute -> min
-      :second -> sec
-      :nsec   -> Date.to_sec(date)
-      :mshort ->
-        month_name_short(month)
-      :mfull ->
-        month_name_full(month)
-      :wdshort ->
-        weekday_name_short(Date.weekday(date))
-      :wdfull ->
-        weekday_name_full(Date.weekday(date))
-      :am -> if hour < 12 do "am" else "pm" end
-      :AM -> if hour < 12 do "AM" else "PM" end
+      :hour12    -> rem(hour, 12)
+      :min       -> min
+      :sec       -> sec
+      :sec_epoch -> Date.to_sec(date)
+      :am        -> if hour < 12 do "am" else "pm" end
+      :AM        -> if hour < 12 do "AM" else "PM" end
+
       :zname ->
         {_,_,{_,tz_name}} = Date.Conversions.to_gregorian(date)
         tz_name
       :zoffs ->
         {_,_,{tz_offset,_}} = Date.Conversions.to_gregorian(date)
-        { sign, hrs, min, _ } = split_tz(tz_offset)
-        { sign, hrs, min }
+        { sign, hour, min, _ } = split_tz(tz_offset)
+        :io_lib.format("~s~2..0B~2..0B", [sign, hour, min])
+      :zoffs_colon ->
+        {_,_,{tz_offset,_}} = Date.Conversions.to_gregorian(date)
+        { sign, hour, min, _ } = split_tz(tz_offset)
+        :io_lib.format("~s~2..0B:~2..0B", [sign, hour, min])
       :zoffs_sec ->
         {_,_,{tz_offset,_}} = Date.Conversions.to_gregorian(date)
-        split_tz(tz_offset)
-    end
-    if is_tuple(result) do
-      tuple_to_list(result)
-    else
-      [result]
+        :io_lib.format("~s~2..0B:~2..0B:~2..0B", tuple_to_list(split_tz(tz_offset)))
     end
   end
 

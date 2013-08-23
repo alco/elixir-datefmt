@@ -138,13 +138,13 @@ defmodule DateFmt.Strftime do
       ?l -> { :hour12,  2 }
       ?P -> :am
       ?p -> :AM
-      ?M -> { :minute,  2 }
-      ?S -> { :second,  2 }
-      ?s -> { :nsec,   -1 }
+      ?M -> { :min,  2 }
+      ?S -> { :sec,  2 }
+      ?s -> { :sec_epoch,   -1 }
       ?A -> :wdfull
       ?a -> :wdshort
-      ?u -> { :wday,      1 }
-      ?w -> { :wday0,     1 }
+      ?u -> { :wday_mon,      1 }
+      ?w -> { :wday_sun,     1 }
       ?G -> { :iso_year,  4 }
       ?g -> { :iso_year2, 2 }
       ?V -> { :iso_week,  2 }
@@ -182,12 +182,12 @@ defmodule DateFmt.Strftime do
         { tag, pad && "~#{width}..#{pad}B" || "~B" }
 
       :zoffs ->
-        case flag do
-          nil  -> { :zoffs, "~s~2..0B~2..0B" }
-          ?:   -> { :zoffs, "~s~2..0B:~2..0B" }
-          "::" -> { :zoffs_sec, "~s~2..0B:~2..0B:~2..0B" }
+        { case flag do
+          nil  -> :zoffs
+          ?:   -> :zoffs_colon
+          "::" -> :zoffs_sec
           _ -> raise ArgumentError, message: "Invalid flag for %z"
-        end
+        end, "~s" }
 
       tag ->
         if nil?(flag) do
