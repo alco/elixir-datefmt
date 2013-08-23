@@ -122,8 +122,8 @@ defmodule DateFmt do
   #ANSIC       = "Mon Jan _2 15:04:05 2006"
   def format(date, :ansic) do
     { {year,month,day}, {hour,min,sec} } = Date.local(date)
-    day_name = Date.weekday_name(Date.weekday(date), :short)
-    month_name = Date.month_name(month, :short)
+    day_name = weekday_name_short(Date.weekday(date))
+    month_name = month_name_short(month)
 
     fstr = "~s ~s ~2.. B ~2..0B:~2..0B:~2..0B ~4..0B"
     :io_lib.format(fstr, [day_name, month_name, day, hour, min, sec, year])
@@ -133,8 +133,8 @@ defmodule DateFmt do
   #UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
   def format(date, :unix) do
     { {year,month,day}, {hour,min,sec} } = Date.local(date)
-    day_name = Date.weekday_name(Date.weekday(date), :short)
-    month_name = Date.month_name(month, :short)
+    day_name = weekday_name_short(Date.weekday(date))
+    month_name = month_name_short(month)
 
     {_,_,{_,tz_name}} = Date.Conversions.to_gregorian(date)
 
@@ -216,15 +216,13 @@ defmodule DateFmt do
       :second -> sec
       :nsec   -> Date.to_sec(date)
       :mshort ->
-        Date.month_name(month, :short)
+        month_name_short(month)
       :mfull ->
-        Date.month_name(month, :full)
+        month_name_full(month)
       :wdshort ->
-        wday = Date.weekday(date)
-        Date.weekday_name(wday, :short)
+        weekday_name_short(Date.weekday(date))
       :wdfull ->
-        wday = Date.weekday(date)
-        Date.weekday_name(wday, :full)
+        weekday_name_full(Date.weekday(date))
       :am -> if hour < 12 do "am" else "pm" end
       :AM -> if hour < 12 do "AM" else "PM" end
       :zname ->
@@ -273,8 +271,8 @@ defmodule DateFmt do
 
   defp format_rfc(date, tz) do
     { {year,month,day}, {hour,min,sec} } = date
-    day_name = Date.weekday_name(Date.weekday(date), :short)
-    month_name = Date.month_name(month, :short)
+    day_name = weekday_name_short(Date.weekday(date))
+    month_name = month_name_short(month)
     fstr = case tz do
       { :name, tz_name } ->
         if tz_name == "UTC" do
@@ -288,6 +286,36 @@ defmodule DateFmt do
     end
     :io_lib.format(fstr, [day_name, day, month_name, year, hour, min, sec])
     |> wrap
+  end
+
+  defp weekday_name_short(day) when day in 1..7 do
+    case day do
+      1 -> "Mon"; 2 -> "Tue"; 3 -> "Wed"; 4 -> "Thu";
+      5 -> "Fri"; 6 -> "Sat"; 7 -> "Sun"
+    end
+  end
+
+  defp weekday_name_full(day) when day in 1..7 do
+    case day do
+      1 -> "Monday"; 2 -> "Tuesday"; 3 -> "Wednesday"; 4 -> "Thursday";
+      5 -> "Friday"; 6 -> "Saturday"; 7 -> "Sunday"
+    end
+  end
+
+  defp month_name_short(month) when month in 1..12 do
+    case month do
+      1 -> "Jan";  2 -> "Feb";  3 -> "Mar";  4 -> "Apr";
+      5 -> "May";  6 -> "Jun";  7 -> "Jul";  8 -> "Aug";
+      9 -> "Sep"; 10 -> "Oct"; 11 -> "Nov"; 12 -> "Dec"
+    end
+  end
+
+  defp month_name_full(month) when month in 1..12 do
+    case month do
+      1 -> "January";    2 -> "February";  3 -> "March";     4 -> "April";
+      5 -> "May";        6 -> "June";      7 -> "July";      8 -> "August";
+      9 -> "September"; 10 -> "October";  11 -> "November"; 12 -> "December"
+    end
   end
 
   defp split_tz(offset) do
