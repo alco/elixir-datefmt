@@ -36,4 +36,8 @@ DateFmt.format(someotherdate, "{YYYY}-{M}-{D} {WDshort} {h12}:{0m}:{0s} {AM}")
 #=> "2013-8-18 Sun 12:03:04 PM"
 ```
 
+## Writing custom formatters
+
+**TODO**
+
   [1]: https://github.com/alco/elixir-datetime#status
