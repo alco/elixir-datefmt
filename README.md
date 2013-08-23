@@ -30,10 +30,10 @@ date = Date.from({ {year,month,day}, {hour,min,sec} }, Date.timezone(3.0, "EEST"
 
 # Now that you have a date value to work with, formatting it is as simple as
 DateFmt.format(somedate, "{ANSIC}")
-#=> "Tue Mar  5 23:25:19 2013"
+#=> { :ok, "Tue Mar  5 23:25:19 2013" }
 
 DateFmt.format(someotherdate, "{YYYY}-{M}-{D} {WDshort} {h12}:{0m}:{0s} {AM}")
-#=> "2013-8-18 Sun 12:03:04 PM"
+#=> { :ok, "2013-8-18 Sun 12:03:04 PM" }
 ```
 
 See tests for more examples.
