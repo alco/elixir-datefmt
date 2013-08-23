@@ -1,6 +1,6 @@
 defmodule DateFmt.Default do
   @moduledoc """
-  Date formatting language used by default in the `DateFmt` module.
+  Date formatting language used by default by the `DateFmt` module.
 
   This is a novel formatting language introduced with `DateFmt`. Its main
   advantage is simplicity and usage of mnemonics that are easy to memorize.
@@ -24,7 +24,7 @@ defmodule DateFmt.Default do
   ### Years and centuries
 
   * `{YYYY}`    - full year number (0..9999)
-  * `{YY}`      - the last to digits of the year number (0.99)
+  * `{YY}`      - the last two digits of the year number (0.99)
   * `{C}`       - century number (0..99)
   * `{WYYYY}`   - year number corresponding to the ISO week (0..9999)
   * `{WYY}`     - the last two digits of the ISO week year (0..99)
@@ -76,7 +76,7 @@ defmodule DateFmt.Default do
   * `{ISO}`         - `<date>T<time><offset>`. Full date and time
                       specification (e.g. `2007-08-13T16:48:01 +0300`)
 
-  * `{ISOz}  `      - `<date>T<time>Z`. Full date and time in UTC (e.g.
+  * `{ISOz}`        - `<date>T<time>Z`. Full date and time in UTC (e.g.
                       `2007-08-13T13:48:01Z`)
 
   * `{ISOdate}`     - `YYYY-MM-DD`. That is, 4-digit year number, followed by
