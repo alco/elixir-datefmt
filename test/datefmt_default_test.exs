@@ -21,14 +21,17 @@ defmodule DateFmtTest.Default do
   end
 
   test :format_iso_year do
-    assert { :ok, "2007" } = format(Date.from({2007,11,19}), "{WYYYY}")
-    assert { :ok, "7" }    = format(Date.from({2007,11,19}), "{WYY}")
-    assert { :ok, "07" }   = format(Date.from({2007,11,19}), "{0WYY}")
-    assert { :ok, " 7" }   = format(Date.from({2007,11,19}), "{_WYY}")
-    assert { :ok, "2005" } = format(Date.from({2006,1,1}), "{WYYYY}")
-    assert { :ok, "5" }    = format(Date.from({2006,1,1}), "{WYY}")
-    assert { :ok, "05" }   = format(Date.from({2006,1,1}), "{0WYY}")
-    assert { :ok, " 5" }   = format(Date.from({2006,1,1}), "{_WYY}")
+    date = Date.from({2007,11,19})
+    assert { :ok, "2007" } = format(date, "{WYYYY}")
+    assert { :ok, "7" }    = format(date, "{WYY}")
+    assert { :ok, "07" }   = format(date, "{0WYY}")
+    assert { :ok, " 7" }   = format(date, "{_WYY}")
+
+    date = Date.from({2006,1,1})
+    assert { :ok, "2005" } = format(date, "{WYYYY}")
+    assert { :ok, "5" }    = format(date, "{WYY}")
+    assert { :ok, "05" }   = format(date, "{0WYY}")
+    assert { :ok, " 5" }   = format(date, "{_WYY}")
   end
 
   test :format_month do
@@ -148,7 +151,6 @@ defmodule DateFmtTest.Default do
   end
 
   test :format_dates do
-    # FIXME: better tests
     date = Date.from({2013,8,18})
     old_date = Date.from({3,8,8})
 
@@ -188,6 +190,9 @@ defmodule DateFmtTest.Default do
     assert { :ok, "1376827384" }  = format(date, "{s-epoch}")
     assert { :ok, "1376827384" }  = format(date, "{0s-epoch}")
     assert { :ok, "1376827384" }  = format(date, "{_s-epoch}")
+
+    date = Date.from({{2001,9,9},{1,46,40}})
+    assert { :ok, "1000000000" } = format(date, "{s-epoch}")
 
     date = Date.epoch()
     assert { :ok, "0" }           = format(date, "{s-epoch}")
@@ -317,6 +322,11 @@ defmodule DateFmtTest.Default do
     assert { :ok, "09 Nov 07 08:37" } = format(date, "{0D} {Mshort} {0YY} {0h24}:{0m}")
 
     assert { :ok, "8:37AM" } = format(date, "{h12}:{0m}{AM}")
+  end
+
+  test :unicode do
+    date = Date.from({{2007,11,9}, {8,37,48}})
+    assert { :ok, "Fri å∫ç∂ {08…37…48} ¿UTC?" } = format(date, "{WDshort} å∫ç∂ {{{0h24}…{m}…{s}} ¿{Zname}?")
   end
 
   test :tokens do

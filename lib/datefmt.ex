@@ -392,7 +392,7 @@ defmodule DateFmt do
         case formatter.(rest) do
           { :skip, length } ->
             <<skip :: [binary, size(length)], rest :: binary>> = rest
-            do_tokenize(rest, fmt, pos + length, parts, [acc,skip])
+            do_tokenize(rest, fmt, pos + length + 1, parts, [acc,skip])
 
           { :ok, dir, length } ->
             new_parts = [parts, String.from_char_list!(acc), dir]

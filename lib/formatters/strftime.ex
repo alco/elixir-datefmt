@@ -51,12 +51,11 @@ defmodule DateFmt.Strftime do
 
   ### Days, and days of week
 
-
   * `%d` - day number (01..31)
   * `%e` - same as `%d`, but padded with spaces ( 1..31)
   * `%j` - ordinal day of the year (001..366)
-  * `%u` - weekday, Monday first (1..7, no padding)
-  * `%w` - weekday, Sunday first (0..6, no padding)
+  * `%u` - weekday, Monday first (1..7)
+  * `%w` - weekday, Sunday first (0..6)
   * `%a` - abbreviated weekday name (Mon..Sun, no padding)
   * `%A` - full weekday name (Monday..Sunday, no padding)
 
@@ -167,7 +166,7 @@ defmodule DateFmt.Strftime do
   end
 
   defp scan_directive_final("", _, _) do
-    { :error, "bad direcitve" }
+    { :error, "bad directive" }
   end
 
   ###
@@ -217,9 +216,13 @@ defmodule DateFmt.Strftime do
       ?r -> { :subfmt, "%I:%M:%S %p" }
       ?T -> { :subfmt, "%H:%M:%S" }
       ?v -> { :subfmt, "%e-%b-%Y" }
+
+      _ -> nil
     end
 
     case val do
+      nil -> { :error, "bad directive %#{<<dir::utf8>>}" }
+
       { :subfmt, _ }=result ->
         { :ok, result }
 
@@ -232,7 +235,7 @@ defmodule DateFmt.Strftime do
         { :ok, translate_zoffs(flag) }
 
       :zoffs ->
-        { :error, "bad flag for directive %z" }
+        { :error, "invalid flag for directive %z" }
 
       tag when nil?(flag) ->
         { :ok, {tag, "~s"} }
