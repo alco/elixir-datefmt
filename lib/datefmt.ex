@@ -69,13 +69,12 @@ defmodule DateFmt do
   defp format_directive(date, dir) do
     {{year,month,day}, {hour,min,sec}} = Date.local(date)
 
-    start_of_year = Date.set(date, [month: 1, day: 1, time: {0,0,0}])
+    start_of_year = Date.from({year,1,1})
     {iso_year, iso_week} = Date.iso_weeknum(date)
 
     daynum = fn date ->
-      localstart = Date.local(start_of_year)
       local = Date.local(date)
-      1 + Date.diff(Date.from(localstart), Date.from(local), :day)
+      1 + Date.diff(start_of_year, Date.from(local), :day)
     end
 
     get_week_no = fn jan1weekday ->

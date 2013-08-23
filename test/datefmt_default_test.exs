@@ -293,33 +293,40 @@ defmodule DateFmtTest.Default do
   # http://www.ruby-doc.org/core-2.0/Time.html#method-i-strftime
   # http://golang.org/pkg/time/#pkg-constants
   test :format_full do
-    date = Date.from({{2007,11,9}, {8,37,48}})
+    minus6 = Date.timezone(-6, "")
+    date = Date.from({{2007,11,19}, {8,37,48}}, minus6)
 
-    #assert { :ok, "083748-0600" } = format(date, "")
-    #assert { :ok, "08:37:48-06:00" } = format(date, "")
-    #assert { :ok, "20071119T083748-0600" } = format(date, "")
-    #assert { :ok, "2007-11-19T08:37:48-06:00" } = format(date, "")
-    #assert { :ok, "2007323T083748-0600" } = format(date, "")
-    #assert { :ok, "2007-323T08:37:48-06:00" } = format(date, "")
-    #assert { :ok, "2007W471T083748-0600" } = format(date, "")
-    #assert { :ok, "2007-W47-1T08:37:48-06:00" } = format(date, "")
+    assert { :ok, "083748-0600" } = format(date, "{0h24}{0m}{0s}{Z}")
+    assert { :ok, "08:37:48-06:00" } = format(date, "{0h24}:{0m}:{0s}{Z:}")
+    assert { :ok, "20071119T083748-0600" } = format(date, "{YYYY}{M}{D}T{0h24}{m}{s}{Z}")
+    assert { :ok, "2007-11-19T08:37:48-06:00" } = format(date, "{YYYY}-{M}-{D}T{0h24}:{m}:{s}{Z:}")
+    assert { :ok, "2007323T083748-0600" } = format(date, "{YYYY}{Dord}T{0h24}{m}{s}{Z}")
+    assert { :ok, "2007-323T08:37:48-06:00" } = format(date, "{YYYY}-{Dord}T{0h24}:{m}:{s}{Z:}")
+    assert { :ok, "2007W471T083748-0600" } = format(date, "{WYYYY}W{Wiso}{WDmon}T{0h24}{m}{s}{Z}")
+    assert { :ok, "2007-W47-1T08:37:48-06:00" } = format(date, "{WYYYY}-W{Wiso}-{WDmon}T{0h24}:{m}:{s}{Z:}")
 
-    # ISO
+    mst = Date.timezone(-7, "MST")
+    date = Date.from({{2007,11,9}, {8,37,48}}, mst)
+
     assert { :ok, "20071109T0837" } = format(date, "{YYYY}{M}{0D}T{0h24}{m}")
     assert { :ok, "2007-11-09T08:37" } = format(date, "{YYYY}-{M}-{0D}T{0h24}:{m}")
 
-    #assert { :ok, "2007323T0837Z" } = format(date, "")
-    #assert { :ok, "2007-323T08:37Z" } = format(date, "")
-    #assert { :ok, "2007W471T0837-0600" } = format(date, "")
-    #assert { :ok, "2007-W47-1T08:37-06:00" } = format(date, "")
-
-
     assert { :ok, "Fri Nov  9 08:37:48 2007" } = format(date, "{WDshort} {Mshort} {_D} {0h24}:{0m}:{0s} {YYYY}")
-    #assert { :ok, "Mon Nov 19 08:37:48 MST 2007" } = format(date, "{WDshort} {Mshort} {_D} {0h24}:{0m}:{0s} {YYYY}")
-    #assert { :ok, "Mon Nov 19 08:37:48 -0700 2007" } = format(date, "{WDshort} {Mshort} {_D} {0h24}:{0m}:{0s} {YYYY}")
+    assert { :ok, "Fri Nov  9 08:37:48 MST 2007" } = format(date, "{WDshort} {Mshort} {_D} {0h24}:{0m}:{0s} {Zname} {YYYY}")
+    assert { :ok, "Fri Nov  9 08:37:48 -0700 2007" } = format(date, "{WDshort} {Mshort} {_D} {0h24}:{0m}:{0s} {Z} {YYYY}")
     assert { :ok, "09 Nov 07 08:37" } = format(date, "{0D} {Mshort} {0YY} {0h24}:{0m}")
 
     assert { :ok, "8:37AM" } = format(date, "{h12}:{0m}{AM}")
+  end
+
+  test :tokens do
+    date = Date.now()
+    assert {:ok, "" } = format(date, "")
+    assert {:ok, "abc" } = format(date, "abc")
+    assert {:ok, "Use { as oft{en as you like{" } = format(date, "Use {{ as oft{{en as you like{{")
+    assert {:ok, "Same go}}es for }}" } = format(date, "Same go}}es for }}")
+    assert {:ok, "{{abc}}" } = format(date, "{{{{abc}}")
+    assert {:ok, "abc } def" } = format(date, "abc } def")
   end
 
   test :validate do
@@ -334,16 +341,7 @@ defmodule DateFmtTest.Default do
     assert {:error, "at 4: missing }"} = validate "abc { def"
     assert {:error, "at 4: extraneous { in directive"} = validate "abc { { def"
     assert {:error, "at 4: bad directive"} = validate "abc {} def"
-  end
-
-  test :tokens do
-    date = Date.now()
-    assert {:ok, "" } = format(date, "")
-    assert {:ok, "abc" } = format(date, "abc")
-    assert {:ok, "Use { as oft{en as you like{" } = format(date, "Use {{ as oft{{en as you like{{")
-    assert {:ok, "Same go}}es for }}" } = format(date, "Same go}}es for }}")
-    assert {:ok, "{{abc}}" } = format(date, "{{{{abc}}")
-    assert {:ok, "abc } def" } = format(date, "abc } def")
+    assert {:error, "at 4: bad directive"} = validate "abc {non-existent} def"
   end
 
   defp format(date, fmt) do
