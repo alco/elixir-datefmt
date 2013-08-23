@@ -36,6 +36,8 @@ DateFmt.format(someotherdate, "{YYYY}-{M}-{D} {WDshort} {h12}:{0m}:{0s} {AM}")
 #=> "2013-8-18 Sun 12:03:04 PM"
 ```
 
+See tests for more examples.
+
 ## Writing custom formatters
 
 **TODO**
