@@ -153,7 +153,7 @@ defmodule DateFmt.Strftime do
       ?z -> :zoffs
       ?Z -> :zname
 
-      # combined directives
+      # compound directives
       ?D -> { :subfmt, "%m/%d/%y" }
       ?F -> { :subfmt, "%Y-%m-%d" }
       ?R -> { :subfmt, "%H:%M" }

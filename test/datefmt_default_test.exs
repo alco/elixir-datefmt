@@ -185,14 +185,14 @@ defmodule DateFmtTest.Default do
     assert { :error, "at 0: bad directive" } = format(date_midnight, "{0am}")
     assert { :error, "at 0: bad directive" } = format(date_midnight, "{_AM}")
 
-    assert { :ok, "1376827384" }  = format(date, "{sepoch}")
-    assert { :ok, "1376827384" }  = format(date, "{0sepoch}")
-    assert { :ok, "1376827384" }  = format(date, "{_sepoch}")
+    assert { :ok, "1376827384" }  = format(date, "{s-epoch}")
+    assert { :ok, "1376827384" }  = format(date, "{0s-epoch}")
+    assert { :ok, "1376827384" }  = format(date, "{_s-epoch}")
 
     date = Date.epoch()
-    assert { :ok, "0" }           = format(date, "{sepoch}")
-    assert { :ok, "0000000000" }  = format(date, "{0sepoch}")
-    assert { :ok, "         0" }  = format(date, "{_sepoch}")
+    assert { :ok, "0" }           = format(date, "{s-epoch}")
+    assert { :ok, "0000000000" }  = format(date, "{0s-epoch}")
+    assert { :ok, "         0" }  = format(date, "{_s-epoch}")
   end
 
   test :format_zones do
@@ -214,6 +214,79 @@ defmodule DateFmtTest.Default do
     assert { :error, "at 0: bad directive" } = format(date, "{_Z}")
     assert { :error, "at 0: bad directive" } = format(date, "{0Z:}")
     assert { :error, "at 0: bad directive" } = format(date, "{_Z::}")
+  end
+
+  test :format_compound_iso do
+    eet = Date.timezone(2, "EET")
+    date = Date.from({{2013,3,5},{23,25,19}}, eet)
+    assert { :ok, "2013-03-05T23:25:19+0200" } = format(date, "{ISO}")
+    assert { :ok, "2013-03-05T21:25:19Z" }     = format(date, "{ISOz}")
+
+    pst = Date.timezone(-8, "PST")
+    local = {{2013,3,5},{23,25,19}}
+    assert { :ok, "2013-03-05T23:25:19-0800" } = format(Date.from(local, pst), "{ISO}")
+    assert { :ok, "2013-03-05T23:25:19+0000" } = format(Date.from(local, :utc), "{ISO}")
+
+
+    date = Date.from({{2007,11,19}, {1,37,48}}, eet)
+
+    assert { :ok, "2007-11-18" } = format(date, "{ISOdate}")
+    assert { :ok, "20071119" }   = format(date, "{0YYYY}{0M}{0D}")
+    assert { :ok, "0007-01-02" } = format(Date.from({7,1,2}), "{ISOdate}")
+
+    assert { :ok, "23:37:48" } = format(date, "{ISOtime}")
+    assert { :ok, "01:37:48" } = format(date, "{0h24}:{0m}:{0s}")
+    assert { :ok, "23:03:09" } = format(Date.from({{1,2,3},{23,3,9}}), "{ISOtime}")
+    assert { :ok, "23:03:09" } = format(Date.from({{1,2,3},{23,3,9}}), "{0h24}:{0m}:{0s}")
+
+    assert { :ok, "2007-W47" }   = format(date, "{ISOweek}")
+    assert { :ok, "2007-W47-1" } = format(date, "{ISOweek}-{WDmon}")
+    assert { :ok, "2007-W47-1" } = format(date, "{ISOweek-day}")
+    assert { :ok, "2007W471" }   = format(date, "{0WYYYY}W{0Wiso}{WDmon}")
+
+    assert { :ok, "2007-322" }   = format(date, "{ISOord}")
+    assert { :ok, "2007-323" }   = format(date, "{0YYYY}-{0Dord}")
+  end
+
+  test :format_compound_rfc1123 do
+    date = Date.from({{2013,3,5},{23,25,19}})
+    assert { :ok, "Tue, 05 Mar 2013 23:25:19 GMT" } = format(date, "{RFC1123}")
+    assert { :ok, "Tue, 05 Mar 2013 23:25:19 +0000" } = format(date, "{RFC1123z}")
+
+    eet = Date.timezone(2, "EET")
+    date = Date.from({{2013,3,5},{23,25,19}}, eet)
+    assert { :ok, "Tue, 05 Mar 2013 23:25:19 EET" } = format(date, "{RFC1123}")
+    assert { :ok, "Tue, 05 Mar 2013 23:25:19 +0200" } = format(date, "{RFC1123z}")
+
+    pst = Date.timezone(-8, "PST")
+    date = Date.from({{2013,3,5},{23,25,19}}, pst)
+    assert { :ok, "Tue, 05 Mar 2013 23:25:19 PST" } = format(date, "{RFC1123}")
+    assert { :ok, "Tue, 05 Mar 2013 23:25:19 -0800" } = format(date, "{RFC1123z}")
+  end
+
+  test :format_compound_rfc3339 do
+    local = {{2013,3,5},{23,25,19}}
+    date = Date.from(local)
+
+    assert { :ok, "2013-03-05T23:25:19Z" } = format(date, "{RFC3339}")
+
+    eet = Date.timezone(2.0, "EET")
+    assert { :ok, "2013-03-05T23:25:19+02:00" } = format(Date.from(local, eet), "{RFC3339}")
+    pst = Date.timezone(-8.0, "PST")
+    assert { :ok, "2013-03-05T23:25:19-08:00" } = format(Date.from(local, pst), "{RFC3339}")
+  end
+
+  test :format_compound_common do
+    local = {{2013,3,5},{23,25,19}}
+    date = Date.from(local)
+
+    pst = Date.timezone(-8.0, "PST")
+    assert { :ok, "Tue Mar  5 23:25:19 2013" } = format(date, "{ANSIC}")
+    assert { :ok, "Tue Mar  5 23:25:19 UTC 2013" } = format(date, "{UNIX}")
+    assert { :ok, "Tue Mar  5 23:25:19 PST 2013" } = format(Date.from(local, pst), "{UNIX}")
+
+    date = Date.from({{2013,3,5},{15,25,19}})
+    assert { :ok, "3:25PM" } = DateFmt.format(date, "{kitchen}")
   end
 
   # References:

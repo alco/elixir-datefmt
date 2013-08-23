@@ -10,151 +10,9 @@ defmodule DateFmt do
   module. One can also implement a custom formatters for use with this module.
   """
 
-   #                                                             #
-  ### Shortcut and efficient implementations for common formats ###
-   #                                                             #
-
   @doc """
   Converts date values to strings according to the given template (aka format string).
-
-  `formatter` is either a string or a formatter spec. The latter is a tuple of the form `{ <function>, <pattern> }`
-  A raising version of `format/2`. Returns a string with formatted date or
-  raises an `ArgumentError`.
   """
-
-  @spec format(Date.dtz,
-      :iso
-    | :iso_full
-    | :iso_date
-    | :iso_time
-    | :iso_week
-    | :iso_week_day
-    | :iso_ordinal
-    | :rfc1123
-    | :rfc1123z
-    | :rfc3339
-    | :ansic
-    | :unix
-    | :kitchen
-    )
-  :: {:ok, String.t} | {:error, String.t}
-
-  ## ISO 8601 ##
-
-  def format(date, :iso) do
-    format_iso(Date.universal(date), "Z")
-  end
-
-  def format(date, :iso_full) do
-    # Need to use local time to comply with ISO
-    local = Date.local(date)
-
-    { _, _, {offset,_} } = Date.Conversions.to_gregorian(date)
-
-    { sign, hrs, min, _ } = split_tz(offset)
-    tz = :io_lib.format("~s~2..0B~2..0B", [sign, hrs, min])
-
-    format_iso(local, tz)
-  end
-
-  def format(date, :iso_date) do
-    {{year,month,day}, _} = Date.universal(date)
-    :io_lib.format("~4..0B-~2..0B-~2..0B", [year, month, day])
-    |> wrap
-  end
-
-  def format(date, :iso_time) do
-    {_, {hour,min,sec}} = Date.universal(date)
-    :io_lib.format("~2..0B:~2..0B:~2..0B", [hour, min, sec])
-    |> wrap
-  end
-
-  def format(date, :iso_week) do
-    {year, week} = Date.weeknum(date)
-    :io_lib.format("~4..0B-W~2..0B", [year, week])
-    |> wrap
-  end
-
-  def format(date, :iso_week_day) do
-    {year, week, day} = Date.iso_triplet(date)
-    :io_lib.format("~4..0B-W~2..0B-~B", [year, week, day])
-    |> wrap
-  end
-
-  def format(date, :iso_ordinal) do
-    {{year,_,_},_} = Date.universal(date)
-    day_no = Date.daynum(date)
-    :io_lib.format("~4..0B-~3..0B", [year, day_no])
-    |> wrap
-  end
-
-  ## RFC 1123 ##
-
-  def format(date, :rfc1123) do
-    local = Date.local(date)
-    { _, _, {_,tz_name} } = Date.Conversions.to_gregorian(date)
-    format_rfc(local, {:name, tz_name})
-  end
-
-  def format(date, :rfc1123z) do
-    local = Date.local(date)
-    { _, _, {tz_offset,_} } = Date.Conversions.to_gregorian(date)
-    format_rfc(local, {:offset, tz_offset})
-  end
-
-  ## Other common formats ##
-
-  # This is similar to ISO, but using xx:xx format for time zone offset (as
-  # opposed to xxxx)
-  def format(date, :rfc3339) do
-    local = Date.local(date)
-
-    { _, _, {offset,_} } = Date.Conversions.to_gregorian(date)
-    tz = if offset == 0 do
-      "Z"
-    else
-      { sign, hrs, min, _ } = split_tz(offset)
-      :io_lib.format("~s~2..0B:~2..0B", [sign, hrs, min])
-    end
-    format_iso(local, tz)
-  end
-
-  #ANSIC       = "Mon Jan _2 15:04:05 2006"
-  def format(date, :ansic) do
-    { {year,month,day}, {hour,min,sec} } = Date.local(date)
-    day_name = weekday_name_short(Date.weekday(date))
-    month_name = month_name_short(month)
-
-    fstr = "~s ~s ~2.. B ~2..0B:~2..0B:~2..0B ~4..0B"
-    :io_lib.format(fstr, [day_name, month_name, day, hour, min, sec, year])
-    |> wrap
-  end
-
-  #UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
-  def format(date, :unix) do
-    { {year,month,day}, {hour,min,sec} } = Date.local(date)
-    day_name = weekday_name_short(Date.weekday(date))
-    month_name = month_name_short(month)
-
-    {_,_,{_,tz_name}} = Date.Conversions.to_gregorian(date)
-
-    fstr = "~s ~s ~2.. B ~2..0B:~2..0B:~2..0B #{tz_name} ~4..0B"
-    :io_lib.format(fstr, [day_name, month_name, day, hour, min, sec, year])
-    |> wrap
-  end
-
-  #Kitchen     = "3:04PM"
-  def format(date, :kitchen) do
-    { _, {hour,min,_} } = Date.local(date)
-    am = if hour < 12 do "AM" else "PM" end
-    hour = if hour in [0, 12] do 12 else rem(hour, 12) end
-    :io_lib.format("~B:~2..0B~s", [hour, min, am])
-    |> wrap
-  end
-
-   #                      #
-  ### Generic formatting ###
-   #                      #
 
   @spec format(Date.dtz, String.t) :: {:ok, String.t} | {:error, String.t}
 
@@ -162,12 +20,38 @@ defmodule DateFmt do
     format(date, fmt, :default)
   end
 
+
+  #@spec format(Date.dtz,
+      #:iso_utc
+    #| :iso_full
+    #| :iso_date
+    #| :iso_time
+    #| :iso_week
+    #| :iso_week_day
+    #| :iso_ordinal
+    #| :rfc1123
+    #| :rfc1123z
+    #| :rfc3339
+    #| :ansic
+    #| :unix
+    #| :kitchen
+    #)
+  #:: {:ok, String.t} | {:error, String.t}
+
+   #                      #
+  ### Generic formatting ###
+   #                      #
+
   def format(date, fmt, formatter) when is_binary(fmt) do
     case tokenize(fmt, formatter) do
       { :ok, parts } ->
         Enum.reduce(parts, [], fn
           ({:subfmt, sfmt}, acc) ->
-            { :ok, bin } = format(date, sfmt, formatter)
+            { :ok, bin } = if is_atom(sfmt) do
+              format_predefined(date, sfmt)
+            else
+              format(date, sfmt, formatter)
+            end
             [acc, bin]
 
           ({dir, fmt}, acc) ->
@@ -185,8 +69,14 @@ defmodule DateFmt do
   defp format_directive(date, dir) do
     {{year,month,day}, {hour,min,sec}} = Date.local(date)
 
-    start_of_year = Date.set(date, [month: 1, day: 1])
-    {iso_year, iso_week} = Date.weeknum(date)
+    start_of_year = Date.set(date, [month: 1, day: 1, time: {0,0,0}])
+    {iso_year, iso_week} = Date.iso_weeknum(date)
+
+    daynum = fn date ->
+      localstart = Date.local(start_of_year)
+      local = Date.local(date)
+      1 + Date.diff(Date.from(localstart), Date.from(local), :day)
+    end
 
     get_week_no = fn jan1weekday ->
       first_monday = rem(7 - jan1weekday, 7) + 1
@@ -205,7 +95,7 @@ defmodule DateFmt do
       :mfull     -> month_name_full(month)
 
       :day       -> day
-      :oday      -> Date.daynum(date)
+      :oday      -> daynum.(date)
       :wday_mon  -> Date.weekday(date)
       :wday_sun  -> rem(Date.weekday(date), 7)
       :wdshort   -> weekday_name_short(Date.weekday(date))
@@ -244,7 +134,7 @@ defmodule DateFmt do
   ####
 
   @doc """
-  A raising version of `format/2`. Returns a string with formatted date or
+  Raising version of `format/2`. Returns a string with formatted date or
   raises an `ArgumentError`.
   """
   def format!(date, fmt) do
@@ -258,7 +148,120 @@ defmodule DateFmt do
     end
   end
 
-  ####
+  ## ISO 8601 ##
+
+  defp format_predefined(date, :"ISOz") do
+    format_iso(Date.universal(date), "Z")
+  end
+
+  defp format_predefined(date, :"ISO") do
+    # Need to use local time to comply with ISO
+    local = Date.local(date)
+
+    { _, _, {offset,_} } = Date.Conversions.to_gregorian(date)
+
+    { sign, hrs, min, _ } = split_tz(offset)
+    tz = :io_lib.format("~s~2..0B~2..0B", [sign, hrs, min])
+
+    format_iso(local, tz)
+  end
+
+  defp format_predefined(date, :"ISOdate") do
+    {{year,month,day}, _} = Date.universal(date)
+    :io_lib.format("~4..0B-~2..0B-~2..0B", [year, month, day])
+    |> wrap
+  end
+
+  defp format_predefined(date, :"ISOtime") do
+    {_, {hour,min,sec}} = Date.universal(date)
+    :io_lib.format("~2..0B:~2..0B:~2..0B", [hour, min, sec])
+    |> wrap
+  end
+
+  defp format_predefined(date, :"ISOweek") do
+    {year, week} = Date.iso_weeknum(date)
+    :io_lib.format("~4..0B-W~2..0B", [year, week])
+    |> wrap
+  end
+
+  defp format_predefined(date, :"ISOweek-day") do
+    {year, week, day} = Date.iso_triplet(date)
+    :io_lib.format("~4..0B-W~2..0B-~B", [year, week, day])
+    |> wrap
+  end
+
+  defp format_predefined(date, :"ISOord") do
+    {{year,_,_},_} = Date.universal(date)
+    day_no = Date.daynum(date)
+    :io_lib.format("~4..0B-~3..0B", [year, day_no])
+    |> wrap
+  end
+
+  ## RFC 1123 ##
+
+  defp format_predefined(date, :"RFC1123") do
+    local = Date.local(date)
+    { _, _, {_,tz_name} } = Date.Conversions.to_gregorian(date)
+    format_rfc(local, {:name, tz_name})
+  end
+
+  defp format_predefined(date, :"RFC1123z") do
+    local = Date.local(date)
+    { _, _, {tz_offset,_} } = Date.Conversions.to_gregorian(date)
+    format_rfc(local, {:offset, tz_offset})
+  end
+
+  ## Other common formats ##
+
+  # This is similar to ISO, but using xx:xx format for time zone offset (as
+  # opposed to xxxx)
+  defp format_predefined(date, :"RFC3339") do
+    local = Date.local(date)
+
+    { _, _, {offset,_} } = Date.Conversions.to_gregorian(date)
+    tz = if offset == 0 do
+      "Z"
+    else
+      { sign, hrs, min, _ } = split_tz(offset)
+      :io_lib.format("~s~2..0B:~2..0B", [sign, hrs, min])
+    end
+    format_iso(local, tz)
+  end
+
+  #ANSIC       = "Mon Jan _2 15:04:05 2006"
+  defp format_predefined(date, :"ANSIC") do
+    { {year,month,day}, {hour,min,sec} } = Date.local(date)
+    day_name = weekday_name_short(Date.weekday(date))
+    month_name = month_name_short(month)
+
+    fstr = "~s ~s ~2.. B ~2..0B:~2..0B:~2..0B ~4..0B"
+    :io_lib.format(fstr, [day_name, month_name, day, hour, min, sec, year])
+    |> wrap
+  end
+
+  #UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
+  defp format_predefined(date, :"UNIX") do
+    { {year,month,day}, {hour,min,sec} } = Date.local(date)
+    day_name = weekday_name_short(Date.weekday(date))
+    month_name = month_name_short(month)
+
+    {_,_,{_,tz_name}} = Date.Conversions.to_gregorian(date)
+
+    fstr = "~s ~s ~2.. B ~2..0B:~2..0B:~2..0B #{tz_name} ~4..0B"
+    :io_lib.format(fstr, [day_name, month_name, day, hour, min, sec, year])
+    |> wrap
+  end
+
+  #Kitchen     = "3:04PM"
+  defp format_predefined(date, :"kitchen") do
+    { _, {hour,min,_} } = Date.local(date)
+    am = if hour < 12 do "AM" else "PM" end
+    hour = if hour in [0, 12] do 12 else rem(hour, 12) end
+    :io_lib.format("~B:~2..0B~s", [hour, min, am])
+    |> wrap
+  end
+
+  #####
 
   defp format_iso({{year,month,day}, {hour,min,sec}}, tz) do
     :io_lib.format(

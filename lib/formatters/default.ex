@@ -7,14 +7,15 @@ defmodule DateFmt.Default do
 
   ## Directive format
 
-  A directive is an optional _padding specifier_ followed by a _mnemonic_, both enclosed in braces (`{` and `}`):
+  A directive is an optional _padding specifier_ followed by a _mnemonic_, both
+  enclosed in braces (`{` and `}`):
 
-      {<pad><mnemonic>}
+      {<padding><mnemonic>}
 
   Supported padding specifiers:
 
   * `0` -- pads the number with zeros. Applicable to mnemonics that produce numerical result.
-  * `_` -- pads the number with spaces.  Applicable to mnemonics that produce numerical result.
+  * `_` -- pads the number with spaces. Applicable to mnemonics that produce numerical result.
 
   When padding specifier is omitted, numbers will not be padded.
 
@@ -55,37 +56,52 @@ defmodule DateFmt.Default do
   * `{h12}`     - hour of the day (1..12)
   * `{m}`       - minutes of the hour (0..59)
   * `{s}`       - seconds of the minute (0..60)
-  * `{sepoch}`  - number of seconds since UNIX epoch
+  * `{s-epoch}` - number of seconds since UNIX epoch
   * `{am}`      - lowercase am or pm (no padding)
   * `{AM}`      - uppercase AM or PM (no padding)
 
   ### Time zones
 
   * `{Zname}`   - time zone name, e.g. `UTC` (no padding)
-  * `{Z}`       - time zone offset in the form `-0730` (sign is always present, no padding)
-  * `{Z:}`      - time zone offset in the form `-07:30`
-  * `{Z::}`     - time zone offset in the form `-07:30:00`
+  * `{Z}`       - time zone offset in the form `+0230` (no padding)
+  * `{Z:}`      - time zone offset in the form `-07:30` (no padding)
+  * `{Z::}`     - time zone offset in the form `-07:30:00` (no padding)
 
   ### Compound directives
 
-  These are shortcut directives corresponding to parts of the ISO 8601 specification.
+  These are shortcut directives corresponding to parts of the ISO 8601
+  specification. The benefit of using these over manually constructed ISO
+  formats is that these directives convert the date to UTC for you.
 
-  * `{ISO}`         -
-  * `{ISOutc}`      -
-  * `{ISOdate}`     -
-  * `{ISOtime}`     -
-  * `{ISOweek}`     -
-  * `{ISOweek-day}` -
-  * `{ISOordinal}`  -
+  * `{ISO}`         - `<date>T<time><offset>`. Full date and time
+                      specification (e.g. `2007-08-13T16:48:01 +0300`)
 
-  And the ones below are miscellaneous common formats:
+  * `{ISOz}  `      - `<date>T<time>Z`. Full date and time in UTC (e.g.
+                      `2007-08-13T13:48:01Z`)
 
-  * `{RFC1123}`  -
-  * `{RFC1123z}` -
-  * `{RFC3339}`  -
-  * `{ANSIC}`    -
-  * `{UNIX}`     -
-  * `{Kitchen}`  -
+  * `{ISOdate}`     - `YYYY-MM-DD`. That is, 4-digit year number, followed by
+                      2-digit month and day numbers (e.g. `2007-08-13`)
+
+  * `{ISOtime}`     - `hh:mm:ss`. That is, 2-digit hour, minute, and second,
+                      separated by colons (e.g. `13:04:05`). Midnight is 00 hours.
+
+  * `{ISOweek}`     - `YYYY-Www`. That is, ISO week-based year, followed by ISO
+                      week number (e.g. `2007-W09`)
+
+  * `{ISOweek-day}` - `YYYY-Www-D`. That is, an `{ISOweek}`, additionally
+                      followed by weekday (e.g. `2007-W09-1`)
+
+  * `{ISOord}`      - `YYYY-DDD`. That is, year number, followed by the ordinal
+                      day number (e.g. `2007-113`)
+
+  These directives provide support for miscellaneous common formats:
+
+  * `{RFC1123}`     - e.g. `Tue, 05 Mar 2013 23:25:19 GMT`
+  * `{RFC1123z}`    - e.g. `Tue, 05 Mar 2013 23:25:19 +0200`
+  * `{RFC3339}`     - e.g. `2013-03-05T23:25:19+02:00`
+  * `{ANSIC}`       - e.g. `Tue Mar  5 23:25:19 2013`
+  * `{UNIX}`        - e.g. `Tue Mar  5 23:25:19 PST 2013`
+  * `{Kitchen}`     - e.g. `3:25PM`
 
   """
 
@@ -150,12 +166,22 @@ defmodule DateFmt.Default do
    { :ok, translate_directive(dir) }
   end
 
+  defp parse_directive(dir, nil)
+        when dir in ["ISO", "ISOz",
+                     "ISOdate", "ISOtime",
+                     "ISOweek", "ISOweek-day", "ISOord",
+
+                     "RFC1123", "RFC1123z", "RFC3339",
+                     "ANSIC", "UNIX", "kitchen"] do
+    { :ok, translate_compound(dir) }
+  end
+
   defp parse_directive(dir, modifier)
         when dir in ["YYYY", "YY", "C", "WYYYY", "WYY",
                      "M",
                      "D", "Dord",
                      "Wiso", "Wmon", "Wsun",
-                     "h24", "h12", "m", "s", "sepoch"] do
+                     "h24", "h12", "m", "s", "s-epoch"] do
     { :ok, translate_directive(dir, modifier) }
   end
 
@@ -184,27 +210,31 @@ defmodule DateFmt.Default do
 
   defp translate_directive(dir, mod) do
     { tag, width } = case dir do
-      "YYYY"   -> { :year,      4 }
-      "YY"     -> { :year2,     2 }
-      "C"      -> { :century,   2 }
-      "WYYYY"  -> { :iso_year,  4 }
-      "WYY"    -> { :iso_year2, 2 }
+      "YYYY"    -> { :year,      4 }
+      "YY"      -> { :year2,     2 }
+      "C"       -> { :century,   2 }
+      "WYYYY"   -> { :iso_year,  4 }
+      "WYY"     -> { :iso_year2, 2 }
 
-      "M"      -> { :month,     2 }
+      "M"       -> { :month,     2 }
 
-      "D"      -> { :day,       2 }
-      "Dord"   -> { :oday,      3 }
+      "D"       -> { :day,       2 }
+      "Dord"    -> { :oday,      3 }
 
-      "Wiso"   -> { :iso_week,  2 }
-      "Wmon"   -> { :week_mon,  2 }
-      "Wsun"   -> { :week_sun,  2 }
+      "Wiso"    -> { :iso_week,  2 }
+      "Wmon"    -> { :week_mon,  2 }
+      "Wsun"    -> { :week_sun,  2 }
 
-      "h24"    -> { :hour24,    2 }
-      "h12"    -> { :hour12,    2 }
-      "m"      -> { :min,       2 }
-      "s"      -> { :sec,       2 }
-      "sepoch" -> { :sec_epoch, 10 }
+      "h24"     -> { :hour24,    2 }
+      "h12"     -> { :hour12,    2 }
+      "m"       -> { :min,       2 }
+      "s"       -> { :sec,       2 }
+      "s-epoch" -> { :sec_epoch, 10 }
     end
     { tag, mod && "~#{width}..#{mod}B" || "~B" }
+  end
+
+  defp translate_compound(dir) do
+    { :subfmt, binary_to_atom(dir) }
   end
 end
