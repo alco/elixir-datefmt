@@ -85,10 +85,40 @@ defmodule DateFmt do
   @doc """
   Parses the date encoded in `string` according to the given format.
   """
-  @spec parse(String.t, String.t, formatter) :: {:ok, Date.dtz} | {:error, String.t}
+  @spec parse(String.t, String.t, formatter) :: {:ok, Date.dtz, String.t} | {:error, String.t}
 
   def parse(string, fmt, formatter) do
-    { :ok, Date.from({2013,1,1}) }
+    case tokenize(fmt, formatter) do
+      { :ok, parts } ->
+        {rest, date_comps} = Enum.reduce(parts, {String.to_char_list!(string), []}, fn
+          ({:subfmt, sfmt}, acc) ->
+            # Subformat is matched recursively
+            { :ok, bin } = if is_atom(sfmt) do
+              parse_predefined(string, sfmt)
+            else
+              parse(string, sfmt, formatter)
+            end
+            [acc, bin]
+
+          ({dir, fmt}, {string, acc}) ->
+            case parse_directive(string, dir, fmt) do
+              { :ok, comps, rest } -> {rest, merge_comps(acc, comps)}
+              { :error, reason }   -> throw reason
+            end
+
+          (bin, {string, acc}) when is_binary(bin) ->
+            # A binary is matched literally
+            case :io_lib.fread(String.to_char_list!(bin), string) do
+              { :ok, [], rest }  -> {rest, acc}
+              { :more, _, _, _ } -> throw "unexpected end of input"
+              { :error, reason } -> throw reason
+            end
+        end)
+        { :ok, Date.zero, String.from_char_list!(rest) }
+
+      error -> error
+    end
+    #{ :ok, Date.from({2013,1,1}) }
   end
 
   @doc """
@@ -183,6 +213,18 @@ defmodule DateFmt do
         {_,_,{tz_offset,_}} = Date.Conversions.to_gregorian(date)
         :io_lib.format("~s~2..0B:~2..0B:~2..0B", tuple_to_list(split_tz(tz_offset)))
     end
+  end
+
+  defp parse_directive(string, dir, fmt) do
+    nil
+  end
+
+  defp merge_comps(c1, c2) do
+    c1 ++ c2
+  end
+
+  defp parse_predefined(string, fmt) do
+    nil
   end
 
   ## ISO 8601 ##

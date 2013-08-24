@@ -1,6 +1,12 @@
 defmodule DateFmtTest.ParseDefault do
   use ExUnit.Case, async: true
 
+  test :parse_literal do
+    zero = Date.zero
+    assert { :ok, ^zero, "" }  = parse("hello", "hello")
+    assert { :ok, ^zero, "1" } = parse("hello1", "hello")
+  end
+
   test :parse_year do
     date2013 = Date.from({2013,1,1})
     date2000 = Date.from({2000,1,1})
