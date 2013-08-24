@@ -10,37 +10,21 @@ defmodule DateFmt do
   module. One can also implement a custom formatters for use with this module.
   """
 
+  @type formatter :: atom | {function, String.t}
+
   @doc """
   Converts date values to strings according to the given template (aka format string).
   """
-
   @spec format(Date.dtz, String.t) :: {:ok, String.t} | {:error, String.t}
 
   def format(date, fmt) when is_binary(fmt) do
     format(date, fmt, :default)
   end
 
-
-  #@spec format(Date.dtz,
-      #:iso_utc
-    #| :iso_full
-    #| :iso_date
-    #| :iso_time
-    #| :iso_week
-    #| :iso_week_day
-    #| :iso_ordinal
-    #| :rfc1123
-    #| :rfc1123z
-    #| :rfc3339
-    #| :ansic
-    #| :unix
-    #| :kitchen
-    #)
-  #:: {:ok, String.t} | {:error, String.t}
-
-   #                      #
-  ### Generic formatting ###
-   #                      #
+  @doc """
+  Same as `format/2`, but allows to specify a custom formatter to use.
+  """
+  @spec format(Date.dtz, String.t, formatter) :: {:ok, String.t} | {:error, String.t}
 
   def format(date, fmt, formatter) when is_binary(fmt) do
     case tokenize(fmt, formatter) do
@@ -65,6 +49,77 @@ defmodule DateFmt do
       error -> error
     end
   end
+
+  @doc """
+  Raising version of `format/2`. Returns a string with formatted date or
+  raises an `ArgumentError`.
+  """
+  @spec format!(Date.dtz, String.t) :: String.t | no_return
+
+  def format!(date, fmt) do
+    format!(date, fmt, :default)
+  end
+
+  @doc """
+  Raising version of `format/3`. Returns a string with formatted date or
+  raises an `ArgumentError`.
+  """
+  @spec format!(Date.dtz, String.t, formatter) :: String.t | no_return
+
+  def format!(date, fmt, formatter) do
+    case format(date, fmt, formatter) do
+      { :ok, result } -> result
+      { :error, reason } -> raise ArgumentError, message: "Bad format: #{reason}"
+    end
+  end
+
+  @doc """
+  Parses the date encoded in `string` according to the given format.
+  """
+  @spec parse(String.t, String.t) :: {:ok, Date.dtz} | {:error, String.t}
+
+  def parse(string, fmt) do
+    parse(string, fmt, :default)
+  end
+
+  @doc """
+  Parses the date encoded in `string` according to the given format.
+  """
+  @spec parse(String.t, String.t, formatter) :: {:ok, Date.dtz} | {:error, String.t}
+
+  def parse(string, fmt, formatter) do
+    IO.puts "#{string} #{fmt}"
+  end
+
+  @doc """
+  Verifies the validity of the given format string. The default formatter is assumed.
+
+  Returns `:ok` if the format string is clean, `{ :error, <reason> }`
+  otherwise.
+  """
+  @spec validate(String.t) :: :ok | {:error, String.t}
+
+  def validate(fmt) do
+    validate(fmt, :default)
+  end
+
+  @doc """
+  Verifies the validity of the given format string.
+
+  Returns `:ok` if the format string is clean, `{ :error, <reason> }`
+  otherwise.
+  """
+  @spec validate(String.t, formatter) :: :ok | {:error, String.t}
+
+  def validate(fmt, formatter) do
+    case tokenize(fmt, formatter) do
+      { :ok, _ } -> :ok
+      error -> error
+    end
+  end
+
+  #########################
+  ### Private functions ###
 
   defp format_directive(date, dir) do
     {{year,month,day}, {hour,min,sec}} = Date.local(date)
@@ -127,23 +182,6 @@ defmodule DateFmt do
       :zoffs_sec ->
         {_,_,{tz_offset,_}} = Date.Conversions.to_gregorian(date)
         :io_lib.format("~s~2..0B:~2..0B:~2..0B", tuple_to_list(split_tz(tz_offset)))
-    end
-  end
-
-  ####
-
-  @doc """
-  Raising version of `format/2`. Returns a string with formatted date or
-  raises an `ArgumentError`.
-  """
-  def format!(date, fmt) do
-    format!(date, fmt, :default)
-  end
-
-  def format!(date, fmt, formatter) do
-    case format(date, fmt, formatter) do
-      { :ok, result } -> result
-      { :error, reason } -> raise ArgumentError, message: "Bad format: #{reason}"
     end
   end
 
@@ -329,35 +367,6 @@ defmodule DateFmt do
 
   defp wrap(formatted) do
     { :ok, iolist_to_binary(formatted) }
-  end
-
-  ######################################################
-
-  @doc """
-  Parses the date encoded in `string` according to the given format.
-  """
-  def parse(string, fmt) do
-    IO.puts "#{string} #{fmt}"
-  end
-
-  ######################################################
-
-  @doc """
-  Verifies the validity of the given format string. The argument is either a string or
-  formatter tuple.
-
-  Returns `:ok` if the format string is clean, `{ :error, <reason> }`
-  otherwise.
-  """
-  def validate(fmt) do
-    validate(fmt, :default)
-  end
-
-  def validate(fmt, formatter) do
-    case tokenize(fmt, formatter) do
-      { :ok, _ } -> :ok
-      error -> error
-    end
   end
 
   ######################################################
