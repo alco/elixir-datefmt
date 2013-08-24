@@ -1,4 +1,4 @@
-defmodule DateFmtTest.Strftime do
+defmodule DateFmtTest.FormatStrftime do
   use ExUnit.Case, async: true
 
   test :format_year do
@@ -270,6 +270,12 @@ defmodule DateFmtTest.Strftime do
     assert {:ok, "%%abc%" } = format(date, "%%%%abc%%")
   end
 
+  defp format(date, fmt) do
+    DateFmt.format(date, fmt, :strftime)
+  end
+end
+
+defmodule DateFmtTest.ValidateStrftime do
   test :validate do
     assert :ok = validate ""
     assert :ok = validate "abc"
@@ -280,10 +286,6 @@ defmodule DateFmtTest.Strftime do
     assert {:error, "at 0: bad directive %^"} = validate "%^"
     assert {:error, "at 2: bad directive"} = validate "%%%"
     assert {:error, "at 0: bad directive %X"} = validate "%0X"
-  end
-
-  defp format(date, fmt) do
-    DateFmt.format(date, fmt, :strftime)
   end
 
   defp validate(fmt) do

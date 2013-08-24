@@ -1,4 +1,4 @@
-defmodule DateFmtTest.Default do
+defmodule DateFmtTest.FormatDefault do
   use ExUnit.Case, async: true
 
   test :format_year do
@@ -339,6 +339,14 @@ defmodule DateFmtTest.Default do
     assert {:ok, "abc } def" } = format(date, "abc } def")
   end
 
+  defp format(date, fmt) do
+    DateFmt.format(date, fmt)
+  end
+end
+
+defmodule DateFmtTest.ValidateDefault do
+  use ExUnit.Case
+
   test :validate do
     assert :ok = validate ""
     assert :ok = validate "abc"
@@ -352,10 +360,6 @@ defmodule DateFmtTest.Default do
     assert {:error, "at 4: extraneous { in directive"} = validate "abc { { def"
     assert {:error, "at 4: bad directive"} = validate "abc {} def"
     assert {:error, "at 4: bad directive"} = validate "abc {non-existent} def"
-  end
-
-  defp format(date, fmt) do
-    DateFmt.format(date, fmt)
   end
 
   defp validate(fmt) do

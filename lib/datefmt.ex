@@ -88,7 +88,7 @@ defmodule DateFmt do
   @spec parse(String.t, String.t, formatter) :: {:ok, Date.dtz} | {:error, String.t}
 
   def parse(string, fmt, formatter) do
-    IO.puts "#{string} #{fmt}"
+    { :ok, Date.from({2013,1,1}) }
   end
 
   @doc """
