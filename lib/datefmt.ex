@@ -229,10 +229,23 @@ defmodule DateFmt do
   end
 
   defp parse_directive(string, dir, "~B") do
+    read_token(string, dir, '~d')
+  end
+
+  defp parse_directive(string, dir, fmt) do
+    case Regex.run(%r/^~(\d+)\.\.[0 ]B$/, fmt) do
+      [_, <<num>>] ->
+        read_token(string, dir, [?~, num, ?d])
+      _ ->
+        :error
+    end
+  end
+
+  defp read_token(string, dir, native_fmt) do
     {{year,_,_}, _} = Date.local
     century = div(year, 100)
 
-    case :io_lib.fread('~d', string) do
+    case :io_lib.fread(native_fmt, string) do
       { :ok, [num], rest } ->
         comp = case dir do
           # FIXME: year number has to be in the range 0..9999
@@ -263,15 +276,6 @@ defmodule DateFmt do
 
       { :more, _, _, _ } -> throw "unexpected end of input"
       { :error, reason } -> throw reason
-    end
-  end
-
-  defp parse_directive(string, dir, fmt) do
-    case Regex.run(%r/^~(\d+)\.\.[0 ]B$/, fmt) do
-      [_, numstr] ->
-        parse_directive(string, dir, "~B")
-      _ ->
-        :error
     end
   end
 

@@ -70,7 +70,7 @@ defmodule DateFmtTest.ParseDefault do
 
     assert { :ok, ^date2013_11, "" } = parse("2013-11-08", "{YYYY}-{M}-{D}")
     assert { :ok, ^date2013_01, "" } = parse("2013- 1- 8", "{YYYY}-{0M}-{0D}")
-    assert { :ok, ^date2013_11, "" } = parse("20131108", "{YYYY}{0M}{0D}")
+    assert { :ok, ^date2013_11, "" } = parse("20131108", "{0YYYY}{0M}{0D}")
   end
 
   #test :format_iso_year do
