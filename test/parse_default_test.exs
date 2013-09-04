@@ -5,32 +5,72 @@ defmodule DateFmtTest.ParseDefault do
     zero = Date.zero
     assert { :ok, ^zero, "" }  = parse("hello", "hello")
     assert { :ok, ^zero, "1" } = parse("hello1", "hello")
+    assert { :ok, ^zero, "Ø" } = parse("áîü≤≥Ø", "áîü≤≥")
+
+    assert { :error, "unexpected end of input" } = parse("h", "hello")
   end
 
   test :parse_year do
     date2013 = Date.from({2013,1,1})
+    date2003 = Date.from({2003,1,1})
     date2000 = Date.from({2000,1,1})
+    date1900 = Date.from({1900,1,1})
     date0003 = Date.from({3,1,1})
     date0000 = Date.from({0,1,1})
 
-    assert { :ok, ^date2013 } = parse("2013", "{YYYY}")
-    assert { :ok, ^date2013 } = parse("13", "{YY}")
-    assert { :ok, ^date2000 } = parse("20", "{C}")
-    assert { :ok, ^date0000 } = parse("0", "{C}")
-    assert { :ok, ^date0000 } = parse("00", "{0C}")
-    assert { :ok, ^date0000 } = parse(" 0", "{_C}")
+    assert { :ok, ^date2013, "" } = parse("2013", "{YYYY}")
+    assert { :ok, ^date2013, "" } = parse("13", "{YY}")
+    assert { :ok, ^date2000, "" } = parse("20", "{C}")
+    assert { :ok, ^date1900, "" } = parse("19", "{C}")
+    assert { :ok, ^date0000, "" } = parse("0", "{C}")
+    assert { :ok, ^date0000, "" } = parse("00", "{0C}")
+    assert { :ok, ^date0000, "" } = parse(" 0", "{_C}")
 
-    assert { :ok, ^date0003 } = parse("3", "{YYYY}")
-    assert { :ok, ^date0003 } = parse("0003", "{0YYYY}")
-    assert { :ok, ^date0003 } = parse("   3", "{_YYYY}")
-    assert { :ok, ^date0003 } = parse("3", "{YY}")
-    assert { :ok, ^date0003 } = parse("03", "{0YY}")
-    assert { :ok, ^date0003 } = parse(" 3", "{_YY}")
+    assert { :ok, ^date0003, "" } = parse("3", "{YYYY}")
+    assert { :ok, ^date0003, "" } = parse("0003", "{YYYY}")
+    assert { :ok, ^date0003, "" } = parse("   3", "{YYYY}")
+    assert { :ok, ^date0003, "" } = parse("0003", "{0YYYY}")
+    assert { :ok, ^date0003, "" } = parse("   3", "{_YYYY}")
+    assert { :ok, ^date2003, "" } = parse("3", "{YY}")
+    assert { :ok, ^date2003, "" } = parse("03", "{YY}")
+    assert { :ok, ^date2003, "" } = parse(" 3", "{YY}")
+    assert { :ok, ^date2003, "" } = parse("03", "{0YY}")
+    assert { :ok, ^date2003, "" } = parse(" 3", "{_YY}")
 
-    assert { :ok, ^date2013 } = parse("20 13", "{C} {YY}")
-    assert { :ok, ^date2013 } = parse("0013 20", "{YY} {C}")
-    assert { :ok, ^date2013 } = parse("0013 00020", "{YY} {C}")
-    assert { :ok, ^date2013 } = parse("0013    20", "{YY} {C}")
+    assert { :ok, ^date2013, "" } = parse("20 13", "{C} {YY}")
+    assert { :ok, ^date2013, "" } = parse("0013 20", "{YY} {C}")
+    assert { :ok, ^date2013, "" } = parse("0013 00020", "{YY} {C}")
+    assert { :ok, ^date2013, "" } = parse("0013    20", "{YY} {C}")
+  end
+
+  test :parse_month do
+    date = Date.from({0,3,1})
+    assert { :ok, ^date, "" } = parse("3", "{M}")
+    assert { :ok, ^date, "" } = parse("03", "{M}")
+    assert { :ok, ^date, "" } = parse(" 3", "{M}")
+    assert { :ok, ^date, "" } = parse("03", "{0M}")
+    assert { :ok, ^date, "" } = parse(" 3", "{_M}")
+  end
+
+  test :parse_day do
+    date18 = Date.from({0,1,18})
+    date8 = Date.from({0,1,8})
+
+    assert { :ok, ^date18, "" } = parse("18", "{D}")
+    assert { :ok, ^date18, "" } = parse("18", "{0D}")
+    assert { :ok, ^date18, "" } = parse("18", "{_D}")
+    assert { :ok, ^date8,  "" } = parse("8", "{D}")
+    assert { :ok, ^date8,  "" } = parse("08", "{0D}")
+    assert { :ok, ^date8,  "" } = parse(" 8", "{_D}")
+  end
+
+  test :parse_year_month_day do
+    date2013_11 = Date.from({2013,11,8})
+    date2013_01 = Date.from({2013,1,8})
+
+    assert { :ok, ^date2013_11, "" } = parse("2013-11-08", "{YYYY}-{M}-{D}")
+    assert { :ok, ^date2013_01, "" } = parse("2013- 1- 8", "{YYYY}-{0M}-{0D}")
+    assert { :ok, ^date2013_11, "" } = parse("20131108", "{YYYY}{0M}{0D}")
   end
 
   #test :format_iso_year do
@@ -47,13 +87,6 @@ defmodule DateFmtTest.ParseDefault do
     #assert { :ok, " 5" }   = format(date, "{_WYY}")
   #end
 
-  #test :format_month do
-    #date = Date.from({3,3,8})
-    #assert { :ok, "3" }  = format(date, "{M}")
-    #assert { :ok, "03" } = format(date, "{0M}")
-    #assert { :ok, " 3" } = format(date, "{_M}")
-  #end
-
   #test :format_month_name do
     #date = Date.from({2013,11,18})
     #old_date = Date.from({3,3,8})
@@ -65,18 +98,6 @@ defmodule DateFmtTest.ParseDefault do
 
     #assert { :error, "at 0: bad directive" } = format(date, "{0Mfull}")
     #assert { :error, "at 1: bad directive" } = format(old_date, " {_Mshort}")
-  #end
-
-  #test :format_day do
-    #date = Date.from({2013,8,18})
-    #old_date = Date.from({3,8,8})
-
-    #assert { :ok, "18" } = format(date, "{D}")
-    #assert { :ok, "18" } = format(date, "{0D}")
-    #assert { :ok, "18" } = format(date, "{_D}")
-    #assert { :ok, "8" }  = format(old_date, "{D}")
-    #assert { :ok, "08" } = format(old_date, "{0D}")
-    #assert { :ok, " 8" } = format(old_date, "{_D}")
   #end
 
   #test :format_ordinal_day do

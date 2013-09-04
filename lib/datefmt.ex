@@ -90,31 +90,11 @@ defmodule DateFmt do
   def parse(string, fmt, formatter) do
     case tokenize(fmt, formatter) do
       { :ok, parts } ->
-        {rest, date_comps} = Enum.reduce(parts, {String.to_char_list!(string), []}, fn
-          ({:subfmt, sfmt}, acc) ->
-            # Subformat is matched recursively
-            { :ok, bin } = if is_atom(sfmt) do
-              parse_predefined(string, sfmt)
-            else
-              parse(string, sfmt, formatter)
-            end
-            [acc, bin]
-
-          ({dir, fmt}, {string, acc}) ->
-            case parse_directive(string, dir, fmt) do
-              { :ok, comps, rest } -> {rest, merge_comps(acc, comps)}
-              { :error, reason }   -> throw reason
-            end
-
-          (bin, {string, acc}) when is_binary(bin) ->
-            # A binary is matched literally
-            case :io_lib.fread(String.to_char_list!(bin), string) do
-              { :ok, [], rest }  -> {rest, acc}
-              { :more, _, _, _ } -> throw "unexpected end of input"
-              { :error, reason } -> throw reason
-            end
-        end)
-        { :ok, Date.zero, String.from_char_list!(rest) }
+        case parse_with_parts(string, parts, formatter) do
+          { :ok, rest, date_comps } ->
+            { :ok, date_with_comps(date_comps), String.from_char_list!(rest) }
+          error -> error
+        end
 
       error -> error
     end
@@ -215,16 +195,131 @@ defmodule DateFmt do
     end
   end
 
+  defp parse_with_parts(string, parts, formatter) do
+    try do
+      {rest, comps} = Enum.reduce(parts, {String.to_char_list!(string), []}, fn
+        ({:subfmt, sfmt}, acc) ->
+          # Subformat is matched recursively
+          { :ok, bin } = if is_atom(sfmt) do
+            parse_predefined(string, sfmt)
+          else
+            parse(string, sfmt, formatter)
+          end
+          [acc, bin]
+
+        ({dir, fmt}, {string, acc}) ->
+          case parse_directive(string, dir, fmt) do
+            { :ok, comp, rest } -> {rest, merge_comps(acc, comp)}
+            { :error, reason }   -> throw reason
+          end
+
+        (bin, {string, acc}) when is_binary(bin) ->
+          # A binary is matched literally
+          case :io_lib.fread(String.to_char_list!(bin), string) do
+            { :ok, [], rest }  -> {rest, acc}
+            { :more, _, _, _ } -> throw "unexpected end of input"
+            { :error, reason } -> throw reason
+          end
+      end)
+      {:ok, rest, comps}
+    catch
+      :throw, reason ->
+        { :error, reason }
+    end
+  end
+
+  defp parse_directive(string, dir, "~B") do
+    {{year,_,_}, _} = Date.local
+    century = div(year, 100)
+
+    case :io_lib.fread('~d', string) do
+      { :ok, [num], rest } ->
+        comp = case dir do
+          # FIXME: year number has to be in the range 0..9999
+          :year      -> [century: div(num,100), year2: rem(num,100)]
+          :year2     ->
+            # assuming current century
+            [century: century, year2: num]
+          :century   -> [century: num]
+          :iso_year  -> [iso_year: num]
+          :iso_year2 ->
+            # assuming current century
+            [iso_year: century*100 + num]
+          :month     -> [month: num]
+          :day       -> [day: num]
+          :oday      -> [oday: num]
+          :wday_mon  -> [wday: num]
+          :wday_sun  -> [wday: if num == 0 do 7 else num end]
+          :iso_week  -> [iso_week: num]
+          :week_mon  -> [week: num]
+          :week_sun  -> [week: num]  # FIXME
+          :hour24    -> [hour: num]
+          :hour12    -> [hour: num]
+          :min       -> [min: num]
+          :sec       -> [sec: num]
+          :sec_epoch -> [osec: num]
+        end
+        { :ok, comp, rest }
+
+      { :more, _, _, _ } -> throw "unexpected end of input"
+      { :error, reason } -> throw reason
+    end
+  end
+
   defp parse_directive(string, dir, fmt) do
-    nil
+    case Regex.run(%r/^~(\d+)\.\.[0 ]B$/, fmt) do
+      [_, numstr] ->
+        parse_directive(string, dir, "~B")
+      _ ->
+        :error
+    end
   end
 
   defp merge_comps(c1, c2) do
-    c1 ++ c2
+    Keyword.merge(c1, c2)
   end
 
   defp parse_predefined(string, fmt) do
     nil
+  end
+
+  defrecordp :tmpdate, year: 0, month: 1, day: 1, hour: 0, min: 0, sec: 0
+  defp date_with_comps(comps) do
+    # valid comps include:
+    # * century
+    # * year2
+    # * iso_year
+    # * month
+    # * wday
+    # * week
+    # * iso_week
+    # * day
+    # * oday
+    # * hour
+    # * min
+    # * sec
+    # * osec
+    # * am
+
+    date = Enum.reduce comps, tmpdate(), fn
+      {:century, num}, tmpdate(year: y)=acc ->
+        tmpdate(acc, year: y + num*100)
+      {:year2, num}, tmpdate(year: y)=acc ->
+        tmpdate(acc, year: y + num)
+      {:month, num}, tmpdate()=acc ->
+        tmpdate(acc, month: num)
+      {:day, num}, tmpdate()=acc ->
+        tmpdate(acc, day: num)
+      {:hour, num}, tmpdate()=acc ->
+        tmpdate(acc, hour: num)
+      {:min, num}, tmpdate()=acc ->
+        tmpdate(acc, min: num)
+      {:sec, num}, tmpdate()=acc ->
+        tmpdate(acc, sec: num)
+    end
+
+    Date.from({{tmpdate(date, :year), tmpdate(date, :month), tmpdate(date, :day)},
+               {tmpdate(date, :hour), tmpdate(date, :min), tmpdate(date, :sec)}})
   end
 
   ## ISO 8601 ##
