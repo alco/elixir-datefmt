@@ -75,30 +75,32 @@ defmodule DateFmtTest.ParseDefault do
 
   #test :format_iso_year do
     #date = Date.from({2007,11,19})
-    #assert { :ok, "2007" } = format(date, "{WYYYY}")
-    #assert { :ok, "7" }    = format(date, "{WYY}")
-    #assert { :ok, "07" }   = format(date, "{0WYY}")
-    #assert { :ok, " 7" }   = format(date, "{_WYY}")
+    #assert { :ok, ^date, "" } = parse("2007", "{WYYYY}")
+    #assert { :ok, ^date, "" } = parse("7"   , "{WYY}")
+    #assert { :ok, ^date, "" } = parse("07"  , "{0WYY}")
+    #assert { :ok, ^date, "" } = parse(" 7"  , "{_WYY}")
 
     #date = Date.from({2006,1,1})
-    #assert { :ok, "2005" } = format(date, "{WYYYY}")
-    #assert { :ok, "5" }    = format(date, "{WYY}")
-    #assert { :ok, "05" }   = format(date, "{0WYY}")
-    #assert { :ok, " 5" }   = format(date, "{_WYY}")
+    #assert { :ok, ^date, "" } = parse("2005", "{WYYYY}")
+    #assert { :ok, ^date, "" } = parse("5"   , "{WYY}")
+    #assert { :ok, ^date, "" } = parse("05"  , "{0WYY}")
+    #assert { :ok, ^date, "" } = parse(" 5"  , "{_WYY}")
   #end
 
-  #test :format_month_name do
-    #date = Date.from({2013,11,18})
-    #old_date = Date.from({3,3,8})
+  test :format_month_name do
+    date_nov = Date.from({0,11,1})
+    assert { :ok, ^date_nov, "" } = parse("Nov", "{Mshort}")
+    assert { :ok, ^date_nov, "" } = parse("November", "{Mfull}")
 
-    #assert { :ok, "Nov" }      = format(date, "{Mshort}")
-    #assert { :ok, "November" } = format(date, "{Mfull}")
-    #assert { :ok, "Mar" }      = format(old_date, "{Mshort}")
-    #assert { :ok, "March" }    = format(old_date, "{Mfull}")
+    date_mar = Date.from({0,3,1})
+    assert { :ok, ^date_mar, "" } = parse("Mar", "{Mshort}")
+    assert { :ok, ^date_mar, "" } = parse("March", "{Mfull}")
 
-    #assert { :error, "at 0: bad directive" } = format(date, "{0Mfull}")
-    #assert { :error, "at 1: bad directive" } = format(old_date, " {_Mshort}")
-  #end
+    assert { :error, "at 0: bad directive" } = parse("", "{0Mfull}")
+    assert { :error, "at 1: bad directive" } = parse("", " {_Mshort}")
+    #assert { :error, "at 0: bad directive" } = parse("Apr", "{Mfull}")
+    #assert { :error, "at 1: bad directive" } = parse("January", " {Mshort}")
+  end
 
   #test :format_ordinal_day do
     #date = Date.from({3,2,1})

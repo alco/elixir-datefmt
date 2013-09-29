@@ -232,12 +232,16 @@ defmodule DateFmt do
     read_token(string, dir, '~d')
   end
 
+  defp parse_directive(string, dir, "~s") do
+    read_token(string, dir, '~s')
+  end
+
   defp parse_directive(string, dir, fmt) do
     case Regex.run(%r/^~(\d+)\.\.[0 ]B$/, fmt) do
       [_, <<num>>] ->
         read_token(string, dir, [?~, num, ?d])
       _ ->
-        :error
+        { :error, fmt }
     end
   end
 
@@ -259,6 +263,8 @@ defmodule DateFmt do
             # assuming current century
             [iso_year: century*100 + num]
           :month     -> [month: num]
+          :mshort    -> [month: parse_month_short(num)]
+          :mfull     -> [month: parse_month_full(num)]
           :day       -> [day: num]
           :oday      -> [oday: num]
           :wday_mon  -> [wday: num]
@@ -310,6 +316,8 @@ defmodule DateFmt do
         tmpdate(acc, year: y + num*100)
       {:year2, num}, tmpdate(year: y)=acc ->
         tmpdate(acc, year: y + num)
+      {:iso_year, _num}, tmpdate() ->
+        raise ArgumentError, message: "Unsupported parse directive :iso_year"
       {:month, num}, tmpdate()=acc ->
         tmpdate(acc, month: num)
       {:day, num}, tmpdate()=acc ->
@@ -324,6 +332,24 @@ defmodule DateFmt do
 
     Date.from({{tmpdate(date, :year), tmpdate(date, :month), tmpdate(date, :day)},
                {tmpdate(date, :hour), tmpdate(date, :min), tmpdate(date, :sec)}})
+  end
+
+  defp parse_month_short(name) do
+    case name do
+      'Jan' -> 1; 'Feb' -> 2;  'Mar' -> 3;  'Apr' -> 4
+      'May' -> 5; 'Jun' -> 6;  'Jul' -> 7;  'Aug' -> 8
+      'Sep' -> 9; 'Oct' -> 10; 'Nov' -> 11; 'Dec' -> 12
+      _ -> { :error, "bad month short name" } # FIXME: better error reporting
+    end
+  end
+
+  defp parse_month_full(name) do
+    case name do
+      'January' -> 1; 'February' -> 2;  'March' -> 3;  'April' -> 4
+      'May' -> 5; 'June' -> 6;  'July' -> 7;  'August' -> 8
+      'September' -> 9; 'October' -> 10; 'November' -> 11; 'December' -> 12
+      _ -> { :error, "bad month name" } # FIXME: better error reporting
+    end
   end
 
   ## ISO 8601 ##
