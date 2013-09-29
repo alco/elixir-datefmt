@@ -186,55 +186,51 @@ defmodule DateFmtTest.ParseDefault do
     #assert { :ok, "53" } = format(date, "{Wsun}")
   #end
 
-  #test :format_dates do
-    #date = Date.from({2013,8,18})
-    #old_date = Date.from({3,8,8})
+  test :parse_dates do
+    date = Date.from({2013,8,18})
+    assert { :ok, ^date, "" } = parse("2013-8-18", "{YYYY}-{M}-{D}")
+    assert { :ok, ^date, "" } = parse("8 2013 18", "{M} {YYYY} {D}")
 
-    #assert { :ok, "2013-8-18" } = format(date, "{YYYY}-{M}-{D}")
-    #assert { :ok, "3/08/08" } = format(old_date, "{YYYY}/{0M}/{0D}")
-    #assert { :ok, "03 8 8" } = format(old_date, "{0YY}{_M}{_D}")
+    date0003 = Date.from({3,8,8})
+    date2003 = Date.from({2003,8,8})
+    assert { :ok, ^date0003, "" } = parse("3/08/08", "{YYYY}/{0M}/{0D}")
+    assert { :ok, ^date2003, "" } = parse("03 8 8", "{0YY}{_M}{_D}")
+    assert { :ok, ^date2003, "" } = parse(" 8/08/ 3", "{_D}/{0M}/{_YY}")
+  end
 
-    #assert { :ok, "8 2013 18" } = format(date, "{M} {YYYY} {D}")
-    #assert { :ok, " 8/08/ 3" } = format(old_date, "{_D}/{0M}/{_YY}")
-    #assert { :ok, "8" } = format(date, "{M}")
-    #assert { :ok, "18" } = format(date, "{D}")
-  #end
+  test :format_time do
+    date_midnight = Date.from({0,1,1})
+    assert { :ok, ^date_midnight, "" } = parse("0", "{h24}")
+    assert { :ok, ^date_midnight, "" } = parse("00", "{0h24}")
+    assert { :ok, ^date_midnight, "" } = parse(" 0", "{_h24}")
+    assert { :ok, ^date_midnight, "" } = parse("am 12", "{am} {h12}")   # FIXME
+    assert { :ok, ^date_midnight, "" } = parse("AM 00", "{AM} {0h24}")  # FIXME
+    assert { :error, "at 0: bad directive" } = parse("", "{0am}")
+    assert { :error, "at 0: bad directive" } = parse("", "{_AM}")
 
-  #test :format_time do
-    #date = Date.from({{2013,8,18}, {16,28,27}})
-    #date_midnight = Date.from({{2013,8,18}, {0,3,4}})
+    #date = Date.from({{0,1,1}, {16,0,0}})
+    #assert { :ok, ^date, "" } = parse("4 pm", "{h12} {am}")
+    #assert { :ok, ^date, "" } = parse("04 PM", "{0h12} {AM}")
+    #assert { :ok, ^date, "" } = parse(" 4 pm", "{_h12} {am}")
 
-    #assert { :ok, "0" }  = format(date_midnight, "{h24}")
-    #assert { :ok, "00" } = format(date_midnight, "{0h24}")
-    #assert { :ok, " 0" } = format(date_midnight, "{_h24}")
+    #date = Date.from({{0,1,1}, {12,3,4}})
+    #assert { :ok, ^date, "" } = parse("12: 3: 4", "{h24}:{_m}:{_s}")
+    #assert { :ok, ^date, "" } = parse("12:03:04", "{h12}:{0m}:{0s}")
+    #assert { :ok, ^date, "" } = parse("12:03:04 PM", "{h12}:{0m}:{0s} {AM}")
+    #assert { :ok, ^date, "" } = parse("pm 12:3:4", "{am} {h24}:{m}:{s}")
 
-    #assert { :ok, "4" }  = format(date, "{h12}")
-    #assert { :ok, "04" } = format(date, "{0h12}")
-    #assert { :ok, " 4" } = format(date, "{_h12}")
-
-    #date = Date.from({{2013,8,18}, {12,3,4}})
-    #assert { :ok, "12: 3: 4" }    = format(date, "{h24}:{_m}:{_s}")
-    #assert { :ok, "12:03:04" }    = format(date, "{h12}:{0m}:{0s}")
-    #assert { :ok, "12:03:04 PM" } = format(date, "{h12}:{0m}:{0s} {AM}")
-    #assert { :ok, "pm 12:3:4" }   = format(date, "{am} {h24}:{m}:{s}")
-    #assert { :ok, "am 12" }       = format(date_midnight, "{am} {h12}")
-    #assert { :ok, "AM 00" }       = format(date_midnight, "{AM} {0h24}")
-
-    #assert { :error, "at 0: bad directive" } = format(date_midnight, "{0am}")
-    #assert { :error, "at 0: bad directive" } = format(date_midnight, "{_AM}")
-
-    #assert { :ok, "1376827384" }  = format(date, "{s-epoch}")
-    #assert { :ok, "1376827384" }  = format(date, "{0s-epoch}")
-    #assert { :ok, "1376827384" }  = format(date, "{_s-epoch}")
+    #assert { :ok, ^date, "" } = parse("1376827384", "{s-epoch}")
+    #assert { :ok, ^date, "" } = parse("1376827384", "{0s-epoch}")
+    #assert { :ok, ^date, "" } = parse("1376827384", "{_s-epoch}")
 
     #date = Date.from({{2001,9,9},{1,46,40}})
-    #assert { :ok, "1000000000" } = format(date, "{s-epoch}")
+    #assert { :ok, ^date, "" } = parse("1000000000", "{s-epoch}")
 
     #date = Date.epoch()
-    #assert { :ok, "0" }           = format(date, "{s-epoch}")
-    #assert { :ok, "0000000000" }  = format(date, "{0s-epoch}")
-    #assert { :ok, "         0" }  = format(date, "{_s-epoch}")
-  #end
+    #assert { :ok, ^date, "" } = parse("0", "{s-epoch}")
+    #assert { :ok, ^date, "" } = parse("0000000000", "{0s-epoch}")
+    #assert { :ok, ^date, "" } = parse("         0", "{_s-epoch}")
+  end
 
   #test :format_zones do
     #eet = Date.timezone(2.0, "EET")

@@ -274,6 +274,10 @@ defmodule DateFmt do
           :week_sun  -> [week: num]  # FIXME
           :hour24    -> [hour: num]
           :hour12    -> [hour: num]
+          :am        -> [am: is_am(num)]
+          :AM        -> [am: is_am(num)]
+          :pm        -> [am: is_am(num)]
+          :PM        -> [am: is_am(num)]
           :min       -> [min: num]
           :sec       -> [sec: num]
           :sec_epoch -> [osec: num]
@@ -324,6 +328,15 @@ defmodule DateFmt do
         tmpdate(acc, day: num)
       {:hour, num}, tmpdate()=acc ->
         tmpdate(acc, hour: num)
+      {:am, false}, tmpdate(hour: h)=acc ->
+        IO.puts "is_am false: #{inspect acc}"
+        tmpdate(acc, hour: h + 12)
+      {:am, true}, tmpdate(hour: 12)=acc ->
+        IO.puts "is_am true: #{inspect acc}"
+        tmpdate(acc, hour: 0)
+      {:am, true}, tmpdate()=acc ->
+        IO.puts "is_am true: #{inspect acc}"
+        acc
       {:min, num}, tmpdate()=acc ->
         tmpdate(acc, min: num)
       {:sec, num}, tmpdate()=acc ->
@@ -351,6 +364,9 @@ defmodule DateFmt do
       _ -> { :error, "bad month name" } # FIXME: better error reporting
     end
   end
+
+  defp is_am(x) when x in ['am', 'AM'], do: true
+  defp is_am(x) when x in ['pm', 'PM'], do: false
 
   ## ISO 8601 ##
 
