@@ -7,7 +7,7 @@ defmodule DateFmt do
   to the specified template.
 
   Multiple template formats are supported, each one provided by a separate
-  module. One can also implement a custom formatters for use with this module.
+  module. One can also implement custom formatters for use with this module.
   """
 
   @type formatter :: atom | {function, String.t}

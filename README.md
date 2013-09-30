@@ -36,7 +36,7 @@ DateFmt.format(someotherdate, "{YYYY}-{M}-{D} {WDshort} {h12}:{0m}:{0s} {AM}")
 #=> { :ok, "2013-8-18 Sun 12:03:04 PM" }
 ```
 
-See tests for more examples.
+See [formatting](https://github.com/alco/elixir-datefmt/blob/master/test/format_default_test.exs) [tests](https://github.com/alco/elixir-datefmt/blob/master/test/format_strftime_time.exs) for more examples.
 
 ## Writing custom formatters
 
