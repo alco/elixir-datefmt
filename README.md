@@ -55,3 +55,7 @@ Any part of the template string located between two formatting directives (or be
 Have a look at how default formatters are implemented, referenced [here](https://github.com/alco/elixir-datefmt/blob/master/lib/datefmt.ex#L557)
 
   [1]: https://github.com/alco/elixir-datetime#status
+
+## License
+
+This software is licensed under [the MIT license](LICENSE.md).
