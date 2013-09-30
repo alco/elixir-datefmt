@@ -5,6 +5,10 @@ Implementation of date formatting and parsing for Elixir. This is still work in 
 
 ## Status
 
+This project is open for takeover. If you wish to become a maintainer, please contact me.
+
+---
+
 As of today (Aug 23, 2013) formatting is implemented, with support for two different formatting syntaxes. See moduledocs for `DateFmt.Default` and `DateFmt.Strftime`. Parsing is not implemented yet.
 
 This project depends on the master branch of [elixir-datetime][1], the latter being a general-purpose library that implements all aspects of working with dates and times. Both elixir-datefmt and elixir-datetime will be changing in some places in the coming weeks, but the overall API is going to remain as is.
