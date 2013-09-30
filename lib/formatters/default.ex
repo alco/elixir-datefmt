@@ -101,7 +101,7 @@ defmodule DateFmt.Default do
   * `{RFC3339}`     - e.g. `2013-03-05T23:25:19+02:00`
   * `{ANSIC}`       - e.g. `Tue Mar  5 23:25:19 2013`
   * `{UNIX}`        - e.g. `Tue Mar  5 23:25:19 PST 2013`
-  * `{Kitchen}`     - e.g. `3:25PM`
+  * `{kitchen}`     - e.g. `3:25PM`
 
   """
 
