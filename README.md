@@ -40,6 +40,14 @@ See [formatting](https://github.com/alco/elixir-datefmt/blob/master/test/format_
 
 ## Writing custom formatters
 
-**TODO**
+A formatter is defined by a tuple `{ <tokenizing function>, <trigger string> }`. The `<tokenizing function>` is called every time the `<trigger string>` is seen in the template string. The return value needs to be one of the following:
+
+* `{ :skip, <num> }` -- indicates that the scanning of the template string should continue `<num>` characters from the current position;
+* `{ :ok, <directive>, <pos> }` -- the `<directive>` is stored by `DateFmt` for later use, and the scanning is resumed at position `<pos>`;
+* `{ :error, <reason> }` -- signals that the formatting process should be aborted with the given error.
+
+Any part of the template string located between two formatting directives (or between one directive and the beginning/end of the string) will be copied as is to the output.
+
+Have a look at how default formatters are implemented, referenced [here](https://github.com/alco/elixir-datefmt/blob/master/lib/datefmt.ex#L557)
 
   [1]: https://github.com/alco/elixir-datetime#status
