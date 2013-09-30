@@ -22,13 +22,15 @@ defmodule DateFmt do
   end
 
   @doc """
-  Same as `format/2`, but allows to specify a custom formatter to use.
+  Same as `format/2`, but takes a custom formatter.
   """
   @spec format(Date.dtz, String.t, formatter) :: {:ok, String.t} | {:error, String.t}
 
   def format(date, fmt, formatter) when is_binary(fmt) do
     case tokenize(fmt, formatter) do
       { :ok, parts } ->
+        # The following reduce() calls produces a list of date components
+        # formatted according to the directives and literal strings in `parts`
         Enum.reduce(parts, [], fn
           ({:subfmt, sfmt}, acc) ->
             { :ok, bin } = if is_atom(sfmt) do
@@ -74,7 +76,7 @@ defmodule DateFmt do
   end
 
   @doc """
-  Parses the date encoded in `string` according to the given format.
+  Parses the date encoded in `string` according to the template.
   """
   @spec parse(String.t, String.t) :: {:ok, Date.dtz} | {:error, String.t}
 
@@ -83,7 +85,8 @@ defmodule DateFmt do
   end
 
   @doc """
-  Parses the date encoded in `string` according to the given format.
+  Parses the date encoded in `string` according to the template by using the
+  provided formatter.
   """
   @spec parse(String.t, String.t, formatter) :: {:ok, Date.dtz, String.t} | {:error, String.t}
 
@@ -98,7 +101,6 @@ defmodule DateFmt do
 
       error -> error
     end
-    #{ :ok, Date.from({2013,1,1}) }
   end
 
   @doc """
@@ -114,7 +116,8 @@ defmodule DateFmt do
   end
 
   @doc """
-  Verifies the validity of the given format string.
+  Verifies the validity of the given format string according to the provided
+  formatter.
 
   Returns `:ok` if the format string is clean, `{ :error, <reason> }`
   otherwise.
@@ -131,6 +134,8 @@ defmodule DateFmt do
   #########################
   ### Private functions ###
 
+  # Takes a directive (atom) and extracts the corresponding component from the
+  # date
   defp format_directive(date, dir) do
     {{year,month,day}, {hour,min,sec}} = Date.local(date)
 
@@ -194,179 +199,6 @@ defmodule DateFmt do
         :io_lib.format("~s~2..0B:~2..0B:~2..0B", tuple_to_list(split_tz(tz_offset)))
     end
   end
-
-  defp parse_with_parts(string, parts, formatter) do
-    try do
-      {rest, comps} = Enum.reduce(parts, {String.to_char_list!(string), []}, fn
-        ({:subfmt, sfmt}, acc) ->
-          # Subformat is matched recursively
-          { :ok, bin } = if is_atom(sfmt) do
-            parse_predefined(string, sfmt)
-          else
-            parse(string, sfmt, formatter)
-          end
-          [acc, bin]
-
-        ({dir, fmt}, {string, acc}) ->
-          case parse_directive(string, dir, fmt) do
-            { :ok, comp, rest } -> {rest, merge_comps(acc, comp)}
-            { :error, reason }   -> throw reason
-          end
-
-        (bin, {string, acc}) when is_binary(bin) ->
-          # A binary is matched literally
-          case :io_lib.fread(String.to_char_list!(bin), string) do
-            { :ok, [], rest }  -> {rest, acc}
-            { :more, _, _, _ } -> throw "unexpected end of input"
-            { :error, reason } -> throw reason
-          end
-      end)
-      {:ok, rest, comps}
-    catch
-      :throw, reason ->
-        { :error, reason }
-    end
-  end
-
-  defp parse_directive(string, dir, "~B") do
-    read_token(string, dir, '~d')
-  end
-
-  defp parse_directive(string, dir, "~s") do
-    read_token(string, dir, '~s')
-  end
-
-  defp parse_directive(string, dir, fmt) do
-    case Regex.run(%r/^~(\d+)\.\.[0 ]B$/, fmt) do
-      [_, <<num>>] ->
-        read_token(string, dir, [?~, num, ?d])
-      _ ->
-        { :error, fmt }
-    end
-  end
-
-  defp read_token(string, dir, native_fmt) do
-    {{year,_,_}, _} = Date.local
-    century = div(year, 100)
-
-    case :io_lib.fread(native_fmt, string) do
-      { :ok, [num], rest } ->
-        comp = case dir do
-          # FIXME: year number has to be in the range 0..9999
-          :year      -> [century: div(num,100), year2: rem(num,100)]
-          :year2     ->
-            # assuming current century
-            [century: century, year2: num]
-          :century   -> [century: num]
-          :iso_year  -> [iso_year: num]
-          :iso_year2 ->
-            # assuming current century
-            [iso_year: century*100 + num]
-          :month     -> [month: num]
-          :mshort    -> [month: parse_month_short(num)]
-          :mfull     -> [month: parse_month_full(num)]
-          :day       -> [day: num]
-          :oday      -> [oday: num]
-          :wday_mon  -> [wday: num]
-          :wday_sun  -> [wday: if num == 0 do 7 else num end]
-          :iso_week  -> [iso_week: num]
-          :week_mon  -> [week: num]
-          :week_sun  -> [week: num]  # FIXME
-          :hour24    -> [hour: num]
-          :hour12    -> [hour: num]
-          :am        -> [am: is_am(num)]
-          :AM        -> [am: is_am(num)]
-          :pm        -> [am: is_am(num)]
-          :PM        -> [am: is_am(num)]
-          :min       -> [min: num]
-          :sec       -> [sec: num]
-          :sec_epoch -> [osec: num]
-        end
-        { :ok, comp, rest }
-
-      { :more, _, _, _ } -> throw "unexpected end of input"
-      { :error, reason } -> throw reason
-    end
-  end
-
-  defp merge_comps(c1, c2) do
-    Keyword.merge(c1, c2)
-  end
-
-  defp parse_predefined(string, fmt) do
-    nil
-  end
-
-  defrecordp :tmpdate, year: 0, month: 1, day: 1, hour: 0, min: 0, sec: 0
-  defp date_with_comps(comps) do
-    # valid comps include:
-    # * century
-    # * year2
-    # * iso_year
-    # * month
-    # * wday
-    # * week
-    # * iso_week
-    # * day
-    # * oday
-    # * hour
-    # * min
-    # * sec
-    # * osec
-    # * am
-
-    date = Enum.reduce comps, tmpdate(), fn
-      {:century, num}, tmpdate(year: y)=acc ->
-        tmpdate(acc, year: y + num*100)
-      {:year2, num}, tmpdate(year: y)=acc ->
-        tmpdate(acc, year: y + num)
-      {:iso_year, _num}, tmpdate() ->
-        raise ArgumentError, message: "Unsupported parse directive :iso_year"
-      {:month, num}, tmpdate()=acc ->
-        tmpdate(acc, month: num)
-      {:day, num}, tmpdate()=acc ->
-        tmpdate(acc, day: num)
-      {:hour, num}, tmpdate()=acc ->
-        tmpdate(acc, hour: num)
-      {:am, false}, tmpdate(hour: h)=acc ->
-        IO.puts "is_am false: #{inspect acc}"
-        tmpdate(acc, hour: h + 12)
-      {:am, true}, tmpdate(hour: 12)=acc ->
-        IO.puts "is_am true: #{inspect acc}"
-        tmpdate(acc, hour: 0)
-      {:am, true}, tmpdate()=acc ->
-        IO.puts "is_am true: #{inspect acc}"
-        acc
-      {:min, num}, tmpdate()=acc ->
-        tmpdate(acc, min: num)
-      {:sec, num}, tmpdate()=acc ->
-        tmpdate(acc, sec: num)
-    end
-
-    Date.from({{tmpdate(date, :year), tmpdate(date, :month), tmpdate(date, :day)},
-               {tmpdate(date, :hour), tmpdate(date, :min), tmpdate(date, :sec)}})
-  end
-
-  defp parse_month_short(name) do
-    case name do
-      'Jan' -> 1; 'Feb' -> 2;  'Mar' -> 3;  'Apr' -> 4
-      'May' -> 5; 'Jun' -> 6;  'Jul' -> 7;  'Aug' -> 8
-      'Sep' -> 9; 'Oct' -> 10; 'Nov' -> 11; 'Dec' -> 12
-      _ -> { :error, "bad month short name" } # FIXME: better error reporting
-    end
-  end
-
-  defp parse_month_full(name) do
-    case name do
-      'January' -> 1; 'February' -> 2;  'March' -> 3;  'April' -> 4
-      'May' -> 5; 'June' -> 6;  'July' -> 7;  'August' -> 8
-      'September' -> 9; 'October' -> 10; 'November' -> 11; 'December' -> 12
-      _ -> { :error, "bad month name" } # FIXME: better error reporting
-    end
-  end
-
-  defp is_am(x) when x in ['am', 'AM'], do: true
-  defp is_am(x) when x in ['pm', 'PM'], do: false
 
   ## ISO 8601 ##
 
@@ -481,7 +313,7 @@ defmodule DateFmt do
     |> wrap
   end
 
-  #####
+  ### Helper functions used by format_predefined ###
 
   defp format_iso({{year,month,day}, {hour,min,sec}}, tz) do
     :io_lib.format(
@@ -552,7 +384,198 @@ defmodule DateFmt do
     { :ok, iolist_to_binary(formatted) }
   end
 
+  ### Private functions for parsing ###
+
+  # This is a mirror of format/3.
+  defp parse_with_parts(string, parts, formatter) do
+    try do
+      {rest, comps} = Enum.reduce(parts, {String.to_char_list!(string), []}, fn
+        ({:subfmt, sfmt}, acc) ->
+          # Subformat is matched recursively
+          { :ok, bin } = if is_atom(sfmt) do
+            parse_predefined(string, sfmt)
+          else
+            parse(string, sfmt, formatter)
+          end
+          [acc, bin]
+
+        ({dir, fmt}, {string, acc}) ->
+          case parse_directive(string, dir, fmt) do
+            { :ok, comp, rest } -> {rest, merge_comps(acc, comp)}
+            { :error, reason }   -> throw reason
+          end
+
+        (bin, {string, acc}) when is_binary(bin) ->
+          # A binary is matched literally
+          case :io_lib.fread(String.to_char_list!(bin), string) do
+            { :ok, [], rest }  -> {rest, acc}
+            { :more, _, _, _ } -> throw "unexpected end of input"
+            { :error, reason } -> throw reason
+          end
+      end)
+      {:ok, rest, comps}
+    catch
+      :throw, reason ->
+        { :error, reason }
+    end
+  end
+
+  # parse_directive() extracts a single token from the input string and
+  # converts it into an intermediate form (using read_token) that will be used
+  # later to build the date
+
+  defp parse_directive(string, dir, "~B") do
+    read_token(string, dir, '~d')
+  end
+
+  defp parse_directive(string, dir, "~s") do
+    read_token(string, dir, '~s')
+  end
+
+  defp parse_directive(string, dir, fmt) do
+    case Regex.run(%r/^~(\d+)\.\.[0 ]B$/, fmt) do
+      [_, <<num>>] ->
+        read_token(string, dir, [?~, num, ?d])
+      _ ->
+        { :error, fmt }
+    end
+  end
+
+  # Converts a formatting directive into intermediate date component (to be
+  # used when building the date later)
+  defp read_token(string, dir, native_fmt) do
+    {{year,_,_}, _} = Date.local
+    century = div(year, 100)
+
+    case :io_lib.fread(native_fmt, string) do
+      { :ok, [num], rest } ->
+        comp = case dir do
+          # FIXME: year number has to be in the range 0..9999
+          :year      -> [century: div(num,100), year2: rem(num,100)]
+          :year2     ->
+            # assuming current century
+            [century: century, year2: num]
+          :century   -> [century: num]
+          :iso_year  -> [iso_year: num]
+          :iso_year2 ->
+            # assuming current century
+            [iso_year: century*100 + num]
+          :month     -> [month: num]
+          :mshort    -> [month: parse_month_short(num)]
+          :mfull     -> [month: parse_month_full(num)]
+          :day       -> [day: num]
+          :oday      -> [oday: num]
+          :wday_mon  -> [wday: num]
+          :wday_sun  -> [wday: if num == 0 do 7 else num end]
+          :iso_week  -> [iso_week: num]
+          :week_mon  -> [week: num]
+          :week_sun  -> [week: num]  # FIXME
+          :hour24    -> [hour: num]
+          :hour12    -> [hour: num]
+          :am        -> [am: is_am(num)]
+          :AM        -> [am: is_am(num)]
+          :pm        -> [am: is_am(num)]
+          :PM        -> [am: is_am(num)]
+          :min       -> [min: num]
+          :sec       -> [sec: num]
+          :sec_epoch -> [osec: num]
+        end
+        { :ok, comp, rest }
+
+      { :more, _, _, _ } -> throw "unexpected end of input"
+      { :error, reason } -> throw reason
+    end
+  end
+
+  # Merge any repeating intermediate components. The most recent one wins.
+  defp merge_comps(c1, c2) do
+    Keyword.merge(c1, c2)
+  end
+
+  defp parse_predefined(string, fmt) do
+    # FIXME: not implemented yet
+    nil
+  end
+
+  # Build the resulting date from the accumulated intermediate components.
+  # Currently, this does not handle all input strings correctly. For instance,
+  # "PM 1" won't work.
+  defrecordp :tmpdate, year: 0, month: 1, day: 1, hour: 0, min: 0, sec: 0
+  defp date_with_comps(comps) do
+    # valid comps include:
+    # * century
+    # * year2
+    # * iso_year
+    # * month
+    # * wday
+    # * week
+    # * iso_week
+    # * day
+    # * oday
+    # * hour
+    # * min
+    # * sec
+    # * osec
+    # * am
+
+    date = Enum.reduce comps, tmpdate(), fn
+      {:century, num}, tmpdate(year: y)=acc ->
+        tmpdate(acc, year: y + num*100)
+      {:year2, num}, tmpdate(year: y)=acc ->
+        tmpdate(acc, year: y + num)
+      {:iso_year, _num}, tmpdate() ->
+        raise ArgumentError, message: "Unsupported parse directive :iso_year"
+      {:month, num}, tmpdate()=acc ->
+        tmpdate(acc, month: num)
+      {:day, num}, tmpdate()=acc ->
+        tmpdate(acc, day: num)
+      {:hour, num}, tmpdate()=acc ->
+        tmpdate(acc, hour: num)
+      {:am, false}, tmpdate(hour: h)=acc ->
+        #IO.puts "is_am false: #{inspect acc}"
+        tmpdate(acc, hour: h + 12)
+      {:am, true}, tmpdate(hour: 12)=acc ->
+        #IO.puts "is_am true: #{inspect acc}"
+        tmpdate(acc, hour: 0)
+      {:am, true}, tmpdate()=acc ->
+        #IO.puts "is_am true: #{inspect acc}"
+        acc
+      {:min, num}, tmpdate()=acc ->
+        tmpdate(acc, min: num)
+      {:sec, num}, tmpdate()=acc ->
+        tmpdate(acc, sec: num)
+    end
+
+    Date.from({{tmpdate(date, :year), tmpdate(date, :month), tmpdate(date, :day)},
+               {tmpdate(date, :hour), tmpdate(date, :min), tmpdate(date, :sec)}})
+  end
+
+  ### Some helper functions for parsing ###
+
+  defp parse_month_short(name) do
+    case name do
+      'Jan' -> 1; 'Feb' -> 2;  'Mar' -> 3;  'Apr' -> 4
+      'May' -> 5; 'Jun' -> 6;  'Jul' -> 7;  'Aug' -> 8
+      'Sep' -> 9; 'Oct' -> 10; 'Nov' -> 11; 'Dec' -> 12
+      _ -> { :error, "bad month short name" } # FIXME: better error reporting
+    end
+  end
+
+  defp parse_month_full(name) do
+    case name do
+      'January' -> 1; 'February' -> 2;  'March' -> 3;  'April' -> 4
+      'May' -> 5; 'June' -> 6;  'July' -> 7;  'August' -> 8
+      'September' -> 9; 'October' -> 10; 'November' -> 11; 'December' -> 12
+      _ -> { :error, "bad month name" } # FIXME: better error reporting
+    end
+  end
+
+  defp is_am(x) when x in ['am', 'AM'], do: true
+  defp is_am(x) when x in ['pm', 'PM'], do: false
+
   ######################################################
+
+  ### Working with formatters ###
 
   defp tokenize(fmt, :default) when is_binary(fmt) do
     do_tokenize(fmt, {&DateFmt.Default.process_directive/1, "{"})
@@ -568,6 +591,9 @@ defmodule DateFmt do
          and is_binary(pat) do
     do_tokenize(fmt, {formatter, pat})
   end
+
+  # do_tokenize() returns { :ok, parts } where parts is a list of formatting
+  # directives and literal strings
 
   defp do_tokenize(str, formatter) do
     do_tokenize(str, formatter, 0, [], [])
